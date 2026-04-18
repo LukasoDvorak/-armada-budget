@@ -1943,10 +1943,9 @@ function renderCats() {
     const arr=open?'▲':'▼';
     // W/A totals in header
     let extraHdrTotals='';
-    let totalColor='#ff6b00'; // default orange
-    if(workingMode){ const wt=getCatWorking(cat); const hasW=Object.keys(workingData).some(k=>k.startsWith(cat.code+'|')&&!k.includes('__')); if(hasW){ const wc=wt===0?'#aaa':wt<tot?'#4d4':'#f55'; extraHdrTotals+=`<span style="color:${wc};font-size:9px;font-weight:600;margin-right:4px">W:${Math.round(wt).toLocaleString('cs-CZ')}</span>`; totalColor=tot===wt?'#eee':wt<tot?'#4d4':'#f55'; } }
-    if(actualMode){  const at=getCatActual(cat);  const hasA=Object.keys(actualData).some(k=>k.startsWith(cat.code+'|')); if(hasA){ const ac=at===0?'#aaa':at<tot?'#4d4':'#f55'; extraHdrTotals+=`<span style="color:${ac};font-size:9px;font-weight:600;margin-right:4px">A:${Math.round(at).toLocaleString('cs-CZ')}</span>`; totalColor=tot===at?'#eee':at<tot?'#4d4':'#f55'; } }
-    html+=`<div class="cat-block"><div class="cat-hdr" tabindex="0" data-code="${cat.code}" onclick="toggleCat('${cat.code}')"><div><span class="cat-code">${cat.code}</span><span class="cat-label">${cat.label.toUpperCase()}</span></div><div>${extraHdrTotals}<span class="cat-total" id="ct-${cat.code}" style="color:${totalColor}">${fmt(tot)}</span> <span id="arr-${cat.code}">${arr}</span></div></div><div class="cat-body${open}" id="body-${cat.code}">`;
+    if(workingMode){ const wt=getCatWorking(cat); const hasW=Object.keys(workingData).some(k=>k.startsWith(cat.code+'|')&&!k.includes('__')); if(hasW){ const wc=wt===0?'#aaa':wt<tot?'#4d4':'#f55'; extraHdrTotals+=`<span style="color:${wc};font-size:9px;font-weight:600;margin-right:4px">W:${Math.round(wt).toLocaleString('cs-CZ')}</span>`; } }
+    if(actualMode){  const at=getCatActual(cat);  const hasA=Object.keys(actualData).some(k=>k.startsWith(cat.code+'|')); if(hasA){ const ac=at===0?'#aaa':at<tot?'#4d4':'#f55'; extraHdrTotals+=`<span style="color:${ac};font-size:9px;font-weight:600;margin-right:4px">A:${Math.round(at).toLocaleString('cs-CZ')}</span>`; } }
+    html+=`<div class="cat-block"><div class="cat-hdr" tabindex="0" data-code="${cat.code}" onclick="toggleCat('${cat.code}')"><div><span class="cat-code">${cat.code}</span><span class="cat-label">${cat.label.toUpperCase()}</span></div><div>${extraHdrTotals}<span class="cat-total" id="ct-${cat.code}">${fmt(tot)}</span> <span id="arr-${cat.code}">${arr}</span></div></div><div class="cat-body${open}" id="body-${cat.code}">`;
 
     if(cat.type==='crew'){
       const counter={n:0};
