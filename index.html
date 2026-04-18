@@ -182,7 +182,7 @@ body.locked .del-sub { display: none; }
 <div id="zoom-wrapper">
 <div class="topbar">
   <span class="logo">ARMADA</span>
-  <span class="subtitle">FILM PRODUCTION BUDGET · v27</span>
+  <span class="subtitle">FILM PRODUCTION BUDGET · v27 · <span id="build-label"></span></span>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <span id="save-status">loading…</span>
     <button class="topbtn" id="btn-dbx" onclick="dbxToggle()" title="Connect to Dropbox">☁ Dropbox</button>
@@ -1577,6 +1577,10 @@ function openFinder() { /* not applicable in web version */ }
 
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
+// ── BUILD — bump this before every push ─────────────────────────────────────
+const APP_BUILD = 1;
+document.addEventListener('DOMContentLoaded', ()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; });
+
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
 const DBX_ROOT = '';
 // Detect base path for GitHub Pages project sites (e.g. /repo-name) vs root (Netlify/custom domain)
