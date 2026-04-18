@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
 <meta name="theme-color" content="#0f0f0f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -166,6 +167,41 @@ body.locked .del-sub { display: none; }
 .overcost-total { color: #ff9966; font-size: 11px; font-weight: 700; }
 .overcost-body { background: #fff8f6; }
 #btn-overcost.mode-on { background: #3a0f00 !important; color: #ff9966 !important; border-color: #8b2200 !important; }
+/* ── KEYBOARD NAV BAR (touch devices) ───────────────────────────────────────── */
+#kbd-nav {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  background: #1a1a1a;
+  border-top: 1px solid #333;
+  height: 44px;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  box-sizing: border-box;
+}
+#kbd-nav button {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  color: #ccc;
+  border-radius: 4px;
+  width: 44px;
+  height: 32px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#kbd-nav button:active { background: #3a3a3a; }
+#kbd-nav .kbd-nav-label {
+  flex: 1;
+  color: #555;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
 </style>
 </head>
 <body>
@@ -371,7 +407,7 @@ function getDeviceName() {
   if (/Windows/.test(ua)) return 'Windows';
   return 'Desktop';
 }
-const LOCK_EXPIRY_MS = 5 * 60 * 1000;
+const LOCK_EXPIRY_MS = 2 * 60 * 1000;
 let lockHeartbeat = null;
 async function checkAndAcquireLock(projName) {
   try {
@@ -396,9 +432,23 @@ async function releaseLock(projName) {
 }
 function startLockHeartbeat(projName) {
   if (lockHeartbeat) clearInterval(lockHeartbeat);
-  lockHeartbeat = setInterval(()=>{ if(currentProject===projName) writeLock(projName); else clearInterval(lockHeartbeat); }, 2*60*1000);
+  lockHeartbeat = setInterval(()=>{ if(currentProject===projName) writeLock(projName); else clearInterval(lockHeartbeat); }, 1*60*1000);
 }
-window.addEventListener('beforeunload', ()=>{ if(currentProject) releaseLock(currentProject); });
+window.addEventListener('beforeunload', ()=>{
+  if (!currentProject) return;
+  const token = dbxToken();
+  if (!token) return;
+  // keepalive:true ensures request completes even after tab closes
+  fetch('https://content.dropboxapi.com/2/files/upload', {
+    method:'POST', keepalive:true,
+    headers:{
+      'Authorization':'Bearer '+token,
+      'Content-Type':'application/octet-stream',
+      'Dropbox-API-Arg':JSON.stringify({path:DBX_ROOT+'/projects/'+currentProject+'/lock.json', mode:'overwrite', autorename:false})
+    },
+    body: JSON.stringify({deviceId:TAB_ID, deviceName:getDeviceName(), ts:0})
+  });
+});
 
 let autosaveLoaded = false, autosaveTime = null;
 let workingMode = false, workingData = {};
@@ -1584,7 +1634,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 2;
+const APP_BUILD = 5;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3048,6 +3098,51 @@ setInterval(()=>{
 },1000);
 const _orig=saveData;
 // autosave handled by saveData(false)await _orig();isDirty=false;};
+
+
+// ── KEYBOARD NAV BAR ──────────────────────────────────────────────────────────
+if ('ontouchstart' in window) {
+  const bar = document.createElement('div');
+  bar.id = 'kbd-nav';
+  bar.innerHTML = '<button ontouchend="event.preventDefault();kbdNav(-1)">&#9650;</button><span class="kbd-nav-label">NAVIGATE</span><button ontouchend="event.preventDefault();kbdNav(1)">&#9660;</button>';
+  document.body.appendChild(bar);
+
+  function getInputs() {
+    return [...document.querySelectorAll('input:not([disabled]):not([readonly]):not([type=checkbox])')].filter(el => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+  }
+
+  window.kbdNav = function(dir) {
+    const inputs = getInputs();
+    const idx = inputs.indexOf(document.activeElement);
+    if (idx === -1) return;
+    const next = inputs[idx + dir];
+    if (next) { next.focus(); next.select(); }
+  };
+
+  function updateKbdNavBar() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const keyboardVisible = (window.innerHeight - vv.height) > 100;
+    const active = document.activeElement;
+    const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    bar.style.display = (keyboardVisible && isInput) ? 'flex' : 'none';
+    if (keyboardVisible) {
+      bar.style.top = (vv.offsetTop + vv.height - 44) + 'px';
+      bar.style.left = vv.offsetLeft + 'px';
+      bar.style.width = vv.width + 'px';
+    }
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateKbdNavBar);
+    window.visualViewport.addEventListener('scroll', updateKbdNavBar);
+  }
+  document.addEventListener('focusin', updateKbdNavBar);
+  document.addEventListener('focusout', ()=>setTimeout(updateKbdNavBar, 100));
+}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 loadDefault();
