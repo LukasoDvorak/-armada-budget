@@ -170,7 +170,7 @@ body.locked .del-sub { display: none; }
 <body>
 
 <div id="ctx-menu"></div>
-<div id="notes-float" style="display:none;position:fixed;top:56px;right:12px;width:340px;height:420px;background:#1a1a1a;border:1px solid #333;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:9999;display:flex;flex-direction:column;padding:12px;box-sizing:border-box;gap:8px">
+<div id="notes-float" style="display:none;position:fixed;top:56px;right:12px;width:340px;height:420px;background:#1a1a1a;border:1px solid #333;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:9999;flex-direction:column;padding:12px;box-sizing:border-box;gap:8px">
   <div style="display:flex;justify-content:space-between;align-items:center">
     <span style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#888;text-transform:uppercase">📝 Notes</span>
     <button onclick="toggleNotesPanel()" style="background:none;border:none;color:#666;font-size:16px;cursor:pointer;padding:0 4px">×</button>
@@ -180,23 +180,24 @@ body.locked .del-sub { display: none; }
 
 <div class="topbar">
   <span class="logo">ARMADA</span>
-  <span class="subtitle">FILM PRODUCTION BUDGET · v24</span>
+  <span class="subtitle">FILM PRODUCTION BUDGET · v25</span>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <span id="save-status">loading…</span>
     <button class="topbtn" id="btn-dbx" onclick="dbxToggle()" title="Connect to Dropbox">☁ Dropbox</button>
-    <button class="topbtn" onclick="editRates()">📋 Rates</button>
     <button class="topbtn" id="btn-fee"     onclick="toggleFeeMode()"  title="Show column for selecting rows included in production fee">💰 Fee</button>
     <button class="topbtn" id="btn-working" onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported">🔧 Working</button>
     <button class="topbtn" id="btn-actual"  onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer">📌 Actual</button>
-    <button class="topbtn" id="btn-notes"   onclick="toggleNotesPanel()" title="Project notes">📝 Notes</button>
-    <button class="topbtn" id="btn-lock"    onclick="toggleLock()"     title="Lock budget">🔒 Lock</button>
     <button class="topbtn" id="btn-overcost" onclick="toggleOvercost()" title="Overcost items above budget">⚠ Overcost</button>
+    <button class="topbtn" id="btn-lock"    onclick="toggleLock()"     title="Lock budget">🔒 Lock</button>
+    <button class="topbtn" id="btn-notes"   onclick="toggleNotesPanel()" title="Project notes">📝 Notes</button>
     <!-- File dropdown -->
     <div class="btn-drop" id="drop-file">
       <button class="topbtn" onclick="toggleDrop('drop-file')">📁 File ▾</button>
       <div class="btn-drop-menu" id="drop-file-menu" style="left:auto;right:0">
         <button onclick="closeDrop('drop-file');newProject()">✚ New</button>
         <button onclick="closeDrop('drop-file');loadProject()">📂 Open</button>
+        <hr class="sep">
+        <button onclick="closeDrop('drop-file');editRates()">📋 Rates</button>
         <hr class="sep">
         <button id="btn-proj-export" onclick="closeDrop('drop-file');exportProject()">⬇ Export Project</button>
         <button id="btn-proj-import" onclick="closeDrop('drop-file');importProject()">⬆ Import Project</button>
