@@ -96,6 +96,11 @@ input.cell-text { width: 100%; padding: 2px 4px; font-size: 13px; border: 1px so
 .topbtn-orange { background: #ff6b00; border-color: #ff6b00; color: #fff; }
 .topbtn-orange:hover { background: #e05a00; }
 .topbtn.mode-on { background: #1a3a1a !important; color: #6f6 !important; border-color: #4a4 !important; }
+.btn-drop { position: relative; display: inline-block; }
+.btn-drop-menu { display: none; position: absolute; top: 100%; left: 0; margin-top: 3px; background: #1e1e1e; border: 1px solid #555; border-radius: 4px; z-index: 9999; min-width: 100%; white-space: nowrap; overflow: hidden; }
+.btn-drop-menu button { display: block; width: 100%; padding: 6px 13px; font-size: 10px; font-weight: 700; font-family: inherit; background: none; border: none; color: #ccc; cursor: pointer; letter-spacing: 0.5px; text-align: left; }
+.btn-drop-menu button:hover { background: #2e2e2e; color: #fff; }
+.btn-drop-menu .sep { border: none; border-top: 1px solid #333; margin: 2px 0; }
 tr.selected td { background: #fff3e6 !important; }
 .btn { flex: 1; padding: 11px; border: 2px solid #0f0f0f; border-radius: 6px; background: #fff; color: #0f0f0f; font-family: inherit; font-weight: 700; font-size: 12px; cursor: pointer; letter-spacing: 1px; }
 .btn-primary { background: #ff6b00; border-color: #ff6b00; color: #fff; }
@@ -175,26 +180,42 @@ body.locked .del-sub { display: none; }
 
 <div class="topbar">
   <span class="logo">ARMADA</span>
-  <span class="subtitle">FILM PRODUCTION BUDGET · v22</span>
+  <span class="subtitle">FILM PRODUCTION BUDGET · v23</span>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <span id="save-status">loading…</span>
     <button class="topbtn" onclick="editRates()">📋 Rates</button>
     <button class="topbtn" onclick="newProject()">✚ New</button>
-    <button class="topbtn" onclick="saveAsProject()">⎘ Save As</button>
     <button class="topbtn" onclick="loadProject()">📂 Open</button>
-    <button class="topbtn" id="btn-proj-export" onclick="exportProject()" title="Export current project as JSON file">⬇ Export</button>
-    <button class="topbtn" id="btn-proj-import" onclick="importProject()" title="Import project from JSON file">⬆ Import</button>
+    <!-- Project file dropdown -->
+    <div class="btn-drop" id="drop-file">
+      <button class="topbtn" onclick="toggleDrop('drop-file')">📁 File ▾</button>
+      <div class="btn-drop-menu" id="drop-file-menu">
+        <button onclick="closeDrop('drop-file');saveAsProject()">⎘ Save As</button>
+        <button onclick="closeDrop('drop-file');addVersion()">⊕ New Version</button>
+        <hr class="sep">
+        <button id="btn-proj-export" onclick="closeDrop('drop-file');exportProject()">⬇ Export Project</button>
+        <button id="btn-proj-import" onclick="closeDrop('drop-file');importProject()">⬆ Import Project</button>
+        <hr class="sep" id="sep-rates-io" style="display:none">
+        <button id="btn-rates-export" onclick="closeDrop('drop-file');exportRates()" style="display:none">⬇ Export Rates</button>
+        <button id="btn-rates-import" onclick="closeDrop('drop-file');importRates()" style="display:none">⬆ Import Rates</button>
+      </div>
+    </div>
     <button class="topbtn" id="btn-fee"     onclick="toggleFeeMode()"  title="Show column for selecting rows included in production fee">💰 Fee</button>
     <button class="topbtn" id="btn-working" onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported">🔧 Working</button>
     <button class="topbtn" id="btn-actual"  onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer">📌 Actual</button>
     <button class="topbtn" id="btn-notes"   onclick="toggleNotesPanel()" title="Project notes">📝 Notes</button>
     <button class="topbtn" id="btn-lock"    onclick="toggleLock()"     title="Lock budget">🔒 Lock</button>
     <button class="topbtn" id="btn-overcost" onclick="toggleOvercost()" title="Overcost items above budget">⚠ Overcost</button>
-    <button class="topbtn" onclick="addVersion()" title="Save as new version and increment version number">⊕ Version</button>
-    <button class="topbtn" id="btn-rates-export" onclick="exportRates()" title="Export rates as JSON file" style="display:none">⬇ Export Rates</button>
-    <button class="topbtn" id="btn-rates-import" onclick="importRates()" title="Import rates from JSON file" style="display:none">⬆ Import Rates</button>
     <button class="topbtn" id="btn-dbx" onclick="dbxToggle()" title="Connect to Dropbox">☁ Connect Dropbox</button>
-    <button class="topbtn topbtn-orange" id="btn-save" onclick="saveData(true)">💾 Save</button>
+    <!-- Save dropdown -->
+    <div class="btn-drop" id="drop-save">
+      <button class="topbtn topbtn-orange" id="btn-save" onclick="saveData(true)">💾 Save ▾</button>
+      <div class="btn-drop-menu" id="drop-save-menu" style="left:auto;right:0">
+        <button onclick="closeDrop('drop-save');saveData(true)">💾 Save</button>
+        <button onclick="closeDrop('drop-save');saveAsProject()">⎘ Save As</button>
+        <button onclick="closeDrop('drop-save');addVersion()">⊕ New Version</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -850,6 +871,21 @@ function feeBase() {
 }
 
 // ── TOGGLES ───────────────────────────────────────────────────────────────────
+// ── DROPDOWN BUTTONS ─────────────────────────────────────────────────────────
+function toggleDrop(id) {
+  const menu = document.getElementById(id+'-menu');
+  const open = menu.style.display === 'block';
+  // close all first
+  document.querySelectorAll('.btn-drop-menu').forEach(m => m.style.display='none');
+  if (!open) menu.style.display = 'block';
+}
+function closeDrop(id) { document.getElementById(id+'-menu').style.display='none'; }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.btn-drop')) {
+    document.querySelectorAll('.btn-drop-menu').forEach(m => m.style.display='none');
+  }
+});
+
 function toggleFeeMode() {
   feeMode = !feeMode;
   document.getElementById('btn-fee').classList.toggle('mode-on', feeMode);
@@ -1286,8 +1322,9 @@ async function editRates() {
     document.getElementById('ver-nav').style.display='none';
     document.getElementById('btn-save').textContent='💾 Save Rates';
     document.getElementById('btn-save').onclick=()=>saveRates(_prevProject);
-    document.getElementById('btn-rates-export').style.display='inline-block';
-    document.getElementById('btn-rates-import').style.display='inline-block';
+    document.getElementById('btn-rates-export').style.display='block';
+    document.getElementById('btn-rates-import').style.display='block';
+    document.getElementById('sep-rates-io').style.display='block';
     setStatus('editing rates');
   } catch(e) { alert('Error:\n'+e.message); }
 }
@@ -1334,6 +1371,7 @@ function exitRatesMode() {
   document.getElementById('btn-save').onclick=()=>saveData(true);
   document.getElementById('btn-rates-export').style.display='none';
   document.getElementById('btn-rates-import').style.display='none';
+  document.getElementById('sep-rates-io').style.display='none';
 }
 function exportRates() {
   const data = {version:new Date().getFullYear().toString(), updated:new Date().toISOString().slice(0,10), cats};
@@ -1686,7 +1724,7 @@ function editAgencyFee(code,si,ri,k){
 function rowCode(cat,n){return `<span class="item-code">${cat.code}${String(n).padStart(2,'0')}</span>`;}
 function extraHeaders(){
   let h='';
-  if(feeMode)     h+=`<th class="th-fee" title="Zahrnout do fee">Fee</th>`;
+  if(feeMode)     h+=`<th class="th-fee" style="width:44px" title="Include in fee">Fee</th>`;
   if(altEnabled()) h+=`<th class="th-alt" style="width:68px">${altName()}</th>`;
   if(workingMode){
     const allKeys=[];
@@ -1697,7 +1735,7 @@ function extraHeaders(){
       else if(cat.type==='std')cat.rows.forEach((_,ri)=>allKeys.push(stdKey(cat.code,ri)));
     });
     const allChk=allKeys.length>0&&allKeys.every(k=>invoiceChecked[k]);
-    h+=`<th class="th-work" style="min-width:110px">Working <input type="checkbox" class="inv-chk" title="Select all" ${allChk?'checked':''} onchange="setAllInvoices(this.checked)" style="margin-left:4px"></th>`;
+    h+=`<th class="th-work" style="width:130px">Working <input type="checkbox" class="inv-chk" title="Select all" ${allChk?'checked':''} onchange="setAllInvoices(this.checked)" style="margin-left:4px"></th>`;
   }
   if(actualMode)   h+=`<th class="th-actual" style="width:95px">Actual</th>`;
   return h;
