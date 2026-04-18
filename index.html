@@ -2170,10 +2170,37 @@ function updateSummaryBar(){
   // Actual
   const aBox=document.getElementById('sum-actual-rows');
   if(actualMode){
-    const aTot=actualTotal(), aFee=isFlatFee?fee:Math.round(aTot*feePct), aIns=Math.round(aTot*insPct), aGrand=aTot+aFee+aIns;
-    const diff=aGrand-grand;
-    aBox.innerHTML=`<div class="sum-row sum-row-actual" style="margin-top:8px;border-top:1px solid #204020"><span style="color:#6d6">Actual Grand Total</span><span style="color:#6d6;font-weight:700">${fmt(aGrand)}</span></div>
-      <div class="sum-row sum-row-actual"><span style="color:#6d6">vs. Budget</span><span class="${diff<=0?'sum-saving-pos':'sum-saving-neg'}" style="font-weight:700">${diff>=0?'+':'−'} ${fmt(Math.abs(diff))}</span></div>`;
+    const aTot=actualTotal();
+    const aFeeFlat = actualData['__aFeeFlat'] ?? isFlatFee;
+    const aInsFlat = actualData['__aInsFlat'] ?? isInsFlat;
+    const aFee = aFeeFlat
+      ? (actualData['__aFee'] ?? fee)
+      : Math.round(actualFeeBase() * (actualData['__aFeePct'] ?? feePct));
+    const aIns = aInsFlat
+      ? (actualData['__aIns'] ?? ins)
+      : Math.round(aTot * (actualData['__aInsPct'] ?? insPct));
+    const aGrand=aTot+aFee+aIns, diff=aGrand-grand;
+    const tbStyleA='padding:1px 5px;font-size:9px;font-family:inherit;border:1px solid #4a4;border-radius:3px;background:#1a3a1a;color:#6a6;cursor:pointer;';
+    aBox.innerHTML=`<div class="sum-row sum-row-actual" style="margin-top:8px;border-top:1px solid #204020">
+      <span style="color:#6d6;font-size:10px;display:flex;align-items:center;gap:6px">Actual Fee
+        <button style="${tbStyleA}" onclick="actualData['__aFeeFlat']=!${aFeeFlat};updateSummaryBar();isDirty=true;">${aFeeFlat?'→ %':'→ flat'}</button>
+      </span>
+      <span style="display:flex;align-items:center;gap:4px">${aFeeFlat?
+        `<input class="pct-inp" type="number" value="${actualData['__aFee']??fee}" style="background:#1a3a1a;border-color:#4a4;color:#9c9;width:88px" oninput="actualData['__aFee']=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;"> <span style="color:#666;font-size:10px">CZK</span>`:
+        `<input class="pct-inp" type="number" value="${((actualData['__aFeePct']??feePct)*100).toFixed(1)}" style="background:#1a3a1a;border-color:#4a4;color:#9c9;width:52px" oninput="actualData['__aFeePct']=(parseFloat(this.value)||0)/100;updateSummaryBar();isDirty=true;"> <span style="color:#666;font-size:10px">%</span>`}
+      <span style="color:#6d6;font-weight:700;min-width:100px;text-align:right">${fmt(aFee)}</span></span>
+    </div>
+    <div class="sum-row sum-row-actual">
+      <span style="color:#6d6;font-size:10px;display:flex;align-items:center;gap:6px">Actual Ins
+        <button style="${tbStyleA}" onclick="actualData['__aInsFlat']=!${aInsFlat};updateSummaryBar();isDirty=true;">${aInsFlat?'→ %':'→ flat'}</button>
+      </span>
+      <span style="display:flex;align-items:center;gap:4px">${aInsFlat?
+        `<input class="pct-inp" type="number" value="${actualData['__aIns']??ins}" style="background:#1a3a1a;border-color:#4a4;color:#9c9;width:88px" oninput="actualData['__aIns']=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;"> <span style="color:#666;font-size:10px">CZK</span>`:
+        `<input class="pct-inp" type="number" value="${((actualData['__aInsPct']??insPct)*100).toFixed(1)}" style="background:#1a3a1a;border-color:#4a4;color:#9c9;width:52px" oninput="actualData['__aInsPct']=(parseFloat(this.value)||0)/100;updateSummaryBar();isDirty=true;"> <span style="color:#666;font-size:10px">%</span>`}
+      <span style="color:#6d6;font-weight:700;min-width:100px;text-align:right">${fmt(aIns)}</span></span>
+    </div>
+    <div class="sum-row sum-row-actual"><span style="color:#6d6">Actual Grand Total</span><span style="color:#6d6;font-weight:700">${fmt(aGrand)}</span></div>
+    <div class="sum-row sum-row-actual"><span style="color:#6d6">vs. Budget</span><span class="${diff<=0?'sum-saving-pos':'sum-saving-neg'}" style="font-weight:700">${diff>=0?'+':'−'} ${fmt(Math.abs(diff))}</span></div>`;
   } else aBox.innerHTML='';
 }
 
