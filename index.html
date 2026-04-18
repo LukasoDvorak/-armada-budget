@@ -881,6 +881,20 @@ function feeBase() {
   });
   return base;
 }
+function workingFeeBase() {
+  if (!Object.keys(feeExclusions).length) return workingTotal();
+  return Object.entries(workingData)
+    .filter(([k,v])=>!k.startsWith('__')&&typeof v==='number'&&!feeExclusions[k])
+    .reduce((s,[,v])=>s+v,0)
+    + overcostRows.reduce((s,r)=>s+(parseFloat(r.working)||0),0);
+}
+function actualFeeBase() {
+  if (!Object.keys(feeExclusions).length) return actualTotal();
+  return Object.entries(actualData)
+    .filter(([k,v])=>!k.startsWith('__')&&typeof v==='number'&&!feeExclusions[k])
+    .reduce((s,[,v])=>s+v,0)
+    + overcostRows.reduce((s,r)=>s+(parseFloat(r.actual)||0),0);
+}
 
 // ── TOGGLES ───────────────────────────────────────────────────────────────────
 // ── ZOOM ──────────────────────────────────────────────────────────────────────
@@ -1149,16 +1163,26 @@ async function loadDefault() {
 
 async function loadProjectByName(projName) {
   try {
-    const files = await dbxListProjectFiles(projName);
-    if (!files.length) throw new Error('No files in '+projName);
-    const data = await dbxDownload('/projects/'+projName+'/'+files[0]);
+    const entries = await dbxListFolder('/projects/'+projName);
+    const files = entries
+      .filter(e=>e['.tag']==='file'&&e.name.endsWith('.json')&&e.name!=='autosave.json')
+      .sort((a,b)=>b.server_modified.localeCompare(a.server_modified))
+      .map(e=>e.name);
+    if (!files.length && !entries.some(e=>e.name==='autosave.json')) throw new Error('No files in '+projName);
+    // Load autosave.json if it is newer than the latest checkpoint
+    const autosaveEntry = entries.find(e=>e.name==='autosave.json');
+    const latestEntry   = entries.find(e=>e.name===files[0]);
+    const useAutosave   = autosaveEntry && (!latestEntry ||
+      autosaveEntry.server_modified > latestEntry.server_modified);
+    const fileToLoad = useAutosave ? 'autosave.json' : files[0];
+    const data = await dbxDownload('/projects/'+projName+'/'+fileToLoad);
     if (!data) throw new Error('File not found');
     applyData(data); exitRatesMode();
-    setProjectState(projName); setStatus('loaded ✓ '+formatFilename(files[0]));
+    setProjectState(projName);
+    setStatus('loaded ✓ '+(useAutosave ? 'autosave' : formatFilename(fileToLoad)));
     versionIndex=0; versionList=files; renderVersionNav();
   } catch(e) { setStatus('load error'); alert('Error loading project:\n'+e.message); throw e; }
 }
-
 function setProjectState(projName) {
   currentProject = projName;
   document.getElementById('project-name').textContent = projName;
@@ -2115,7 +2139,7 @@ function updateSummaryBar(){
     const wInsFlat = workingData['__wInsFlat'] ?? isInsFlat;
     const wFee = wFeeFlat
       ? (workingData['__wFee'] ?? fee)
-      : Math.round(wTot * (workingData['__wFeePct'] ?? feePct));
+      : Math.round(workingFeeBase() * (workingData['__wFeePct'] ?? feePct));
     const wIns = wInsFlat
       ? (workingData['__wIns'] ?? ins)
       : Math.round(wTot * (workingData['__wInsPct'] ?? insPct));
