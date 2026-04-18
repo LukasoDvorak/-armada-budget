@@ -1063,6 +1063,12 @@ async function loadDefault() {
   }
   updateDbxUI();
   if (!dbxIsConnected()) { setStatus('Connect Dropbox to load projects'); return; }
+  // Restore project from URL first (supports multiple tabs with different projects)
+  const urlMatch = window.location.pathname.match(/^\/project\/([^\/]+)/);
+  if (urlMatch) {
+    try { await loadProjectByName(decodeURIComponent(urlMatch[1])); return; } catch(e) {}
+  }
+  // Fall back to last opened project from localStorage
   const latestProj = localStorage.getItem('dbx_latest_project');
   if (latestProj) {
     try { await loadProjectByName(latestProj); return; } catch(e) {}
