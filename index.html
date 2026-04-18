@@ -1277,7 +1277,7 @@ async function loadDefault() {
   try {
     const entries = await dbxListFolder('/projects/'+projName);
     const files = entries
-      .filter(e=>e['.tag']==='file'&&e.name.endsWith('.json')&&e.name!=='autosave.json')
+      .filter(e=>e['.tag']==='file'&&e.name.endsWith('.json')&&e.name!=='autosave.json'&&e.name!=='lock.json')
       .sort((a,b)=>b.server_modified.localeCompare(a.server_modified))
       .map(e=>e.name);
     // Always prefer autosave.json if it exists (most recent work)
@@ -1635,7 +1635,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 12;
+const APP_BUILD = 13;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -1747,7 +1747,7 @@ async function dbxListFolder(path) {
 async function dbxListProjectFiles(projName) {
   const entries = await dbxListFolder('/projects/'+projName);
   return entries
-    .filter(e=>e['.tag']==='file'&&e.name.endsWith('.json')&&e.name!=='autosave.json')
+    .filter(e=>e['.tag']==='file'&&e.name.endsWith('.json')&&e.name!=='autosave.json'&&e.name!=='lock.json')
     .sort((a,b)=>b.server_modified.localeCompare(a.server_modified))
     .map(e=>e.name);
 }
