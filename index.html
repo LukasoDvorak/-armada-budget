@@ -1635,7 +1635,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 10;
+const APP_BUILD = 11;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2042,7 +2042,7 @@ function renderCrewSec(cat, si, sec, counter) {
               <span>${lbl}</span>
               <div class="item-note sub-note" contenteditable="true" onblur="setRowNote('${vsk}',this.textContent.trim())">${rowNotes[vsk]||''}</div>
             </td>
-            <td>${numInp(q,`updateVanSec('${cat.code}',${si},${ri},${k},0,this.value)`)}</td>
+            <td>${numInpRaw(q,`updateVanSec('${cat.code}',${si},${ri},${k},0,this.value)`)}</td>
             <td>${numInp(r,`updateVanSec('${cat.code}',${si},${ri},${k},1,this.value)`)}</td>
             <td class="tdr" style="color:#999;font-size:10px" id="vsub2-${cat.code}-${si}-${ri}-${k}">${q*r>0?fmt(q*r):'—'}</td>
             ${extraEmpty()}</tr>`;
@@ -2107,7 +2107,7 @@ function renderCrewSec(cat, si, sec, counter) {
           </div></td>
           <td></td>
           <td></td>
-          <td>${numInp(q,`updateVanSec('${cat.code}',${si},${ri},${k},0,this.value)`)}</td>
+          <td>${numInpRaw(q,`updateVanSec('${cat.code}',${si},${ri},${k},0,this.value)`)}</td>
           <td>${numInp(r,`updateVanSec('${cat.code}',${si},${ri},${k},1,this.value)`)}</td>
           <td class="tdr" style="color:#999;font-size:10px" id="vsub2-${cat.code}-${si}-${ri}-${k}">${q*r>0?fmt(q*r):'—'}</td>
           ${extraEmpty()}</tr>`;
@@ -2166,7 +2166,7 @@ function renderCats() {
               <span>${lbl}</span>
               <div class="item-note sub-note" contenteditable="true" onblur="setRowNote('${vtk}',this.textContent.trim())">${rowNotes[vtk]||''}</div>
             </td>
-            <td>${numInp(q,`updateTransport('${cat.code}',${vi},${si},0,this.value)`)}</td>
+            <td>${numInpRaw(q,`updateTransport('${cat.code}',${vi},${si},0,this.value)`)}</td>
             <td>${numInp(r,`updateTransport('${cat.code}',${vi},${si},1,this.value)`)}</td>
             <td class="tdr" style="color:#999;font-size:10px" id="ts-${cat.code}-${vi}-${si}">${q*r>0?fmt(q*r):'—'}</td>
             ${extraEmpty()}</tr>`;
@@ -2188,7 +2188,7 @@ function renderCats() {
             html+=`<tr class="${ri%2===0?'even':''}" ${dnd} oncontextmenu="ctxTalent(event,'${cat.code}',${si},${ri})">
               <td class="drag-col">⠿</td>
               <td>${rowCode(cat,++talentCnt.n)}${makeEditable(row.name,`cats.find(c=>c.code==='${cat.code}').sections[${si}].rows[${ri}].name=v`)}<div class="item-note" contenteditable="true" onblur="setRowNote('${wk}',this.textContent.trim())">${rowNotes[wk]||''}</div></td>
-              <td>${numInp(row.qty,`updateTalentQty('${cat.code}',${si},${ri},0,this.value)`)}</td>
+              <td>${numInpRaw(row.qty,`updateTalentQty('${cat.code}',${si},${ri},0,this.value)`)}</td>
               <td>${numInp(row.rate,`updateTalentQty('${cat.code}',${si},${ri},1,this.value)`)}</td>
               <td class="tdr" style="font-weight:600" id="tq-${cat.code}-${si}-${ri}">${row.qty*row.rate>0?fmt(row.qty*row.rate):'—'}</td>
               ${extraCols(row.qty*row.rate,wk)}</tr>`;
@@ -2213,7 +2213,7 @@ function renderCats() {
                   <button class="del-sub" onclick="deleteTalentSub('${cat.code}',${si},${ri},${k})" title="Delete sub-row">×</button>
                   <div class="item-note sub-note" contenteditable="true" onblur="setRowNote('${tsk}',this.textContent.trim())">${rowNotes[tsk]||''}</div>
                 </td>
-                <td>${numInp(q,`updateTalentSub('${cat.code}',${si},${ri},${k},0,this.value)`)}</td>
+                <td>${numInpRaw(q,`updateTalentSub('${cat.code}',${si},${ri},${k},0,this.value)`)}</td>
                 <td>${rateDisp}</td>
                 <td class="tdr" style="color:#999;font-size:10px" id="tsub-${cat.code}-${si}-${ri}-${k}">${q*r>0?fmt(q*r):'—'}</td>
                 ${extraEmpty()}</tr>`;
@@ -2233,7 +2233,7 @@ function renderCats() {
           <td class="drag-col">⠿</td>
           <td>${rowCode(cat,ri+1)}${makeEditable(desc,`cats.find(c=>c.code==='${cat.code}').rows[${ri}][0]=v`)}</td>
           <td style="color:#999;font-size:10px">${makeEditable(note||'',`cats.find(c=>c.code==='${cat.code}').rows[${ri}][1]=v`)}</td>
-          <td>${numInp(q,`updateStd('${cat.code}',${ri},0,this.value)`)}</td>
+          <td>${numInpRaw(q,`updateStd('${cat.code}',${ri},0,this.value)`)}</td>
           <td>${numInp(r,`updateStd('${cat.code}',${ri},1,this.value)`)}</td>
           <td class="tdr" style="font-weight:600" id="std-${cat.code}-${ri}">${q*r>0?fmt(q*r):'—'}</td>
           ${extraCols(q*r,wk)}</tr>`;
