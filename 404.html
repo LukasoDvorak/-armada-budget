@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+  // GitHub Pages SPA fallback — redirect to index.html preserving the path
+  const base = '/' + location.pathname.split('/')[1];
+  const rest = location.pathname.slice(base.length) + location.search + location.hash;
+  location.replace(location.origin + base + '/?redirect=' + encodeURIComponent(rest));
+</script>
+</head>
+</html>
