@@ -189,6 +189,8 @@ body.locked .del-sub { display: none; }
     <button class="topbtn" id="btn-lock"    onclick="toggleLock()"     title="Lock budget">🔒 Lock</button>
     <button class="topbtn" id="btn-overcost" onclick="toggleOvercost()" title="Overcost items above budget">⚠ Overcost</button>
     <button class="topbtn" onclick="addVersion()" title="Save as new version and increment version number">⊕ Version</button>
+    <button class="topbtn" id="btn-rates-export" onclick="exportRates()" title="Export rates as JSON file" style="display:none">⬇ Export Rates</button>
+    <button class="topbtn" id="btn-rates-import" onclick="importRates()" title="Import rates from JSON file" style="display:none">⬆ Import Rates</button>
     <button class="topbtn" id="btn-dbx" onclick="dbxToggle()" title="Connect to Dropbox">☁ Connect Dropbox</button>
     <button class="topbtn topbtn-orange" id="btn-save" onclick="saveData(true)">💾 Save</button>
   </div>
@@ -1282,6 +1284,8 @@ async function editRates() {
     document.getElementById('ver-nav').style.display='none';
     document.getElementById('btn-save').textContent='💾 Save Rates';
     document.getElementById('btn-save').onclick=()=>saveRates(_prevProject);
+    document.getElementById('btn-rates-export').style.display='inline-block';
+    document.getElementById('btn-rates-import').style.display='inline-block';
     setStatus('editing rates');
   } catch(e) { alert('Error:\n'+e.message); }
 }
@@ -1326,6 +1330,34 @@ function exitRatesMode() {
   isRatesMode=false;
   document.getElementById('btn-save').textContent='💾 Save';
   document.getElementById('btn-save').onclick=()=>saveData(true);
+  document.getElementById('btn-rates-export').style.display='none';
+  document.getElementById('btn-rates-import').style.display='none';
+}
+function exportRates() {
+  const data = {version:new Date().getFullYear().toString(), updated:new Date().toISOString().slice(0,10), cats};
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'armada_rates_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+function importRates() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.cats) { alert('Invalid rates file.'); return; }
+        applyData({header:{}, settings:{productionFeePct:15,insurancePct:1}, cats:data.cats});
+        isDirty=true; setStatus('rates imported — click Save Rates to apply');
+      } catch(e) { alert('Error reading file:\n'+e.message); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 function openFinder() { /* not applicable in web version */ }
 
