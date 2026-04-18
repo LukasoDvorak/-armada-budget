@@ -498,8 +498,14 @@ function renderOvercostBlock() {
 }
 
 // ── FEE / WORKING / ACTUAL HELPERS ───────────────────────────────────────────
-function setWorking(key, val) { snapshot(); const v=parseFloat(val)||0; if(v===0)delete workingData[key]; else workingData[key]=v; updateSummaryBar(); isDirty=true; }
-function setActual(key, val)  { snapshot(); const v=parseFloat(val)||0; if(v===0)delete actualData[key];  else actualData[key]=v;  updateSummaryBar(); isDirty=true; }
+function setWorking(key, val) { snapshot(); const v=parseFloat(val)||0; if(v===0)delete workingData[key]; else workingData[key]=v; updateSummaryBar(); isDirty=true; updateCatHeaderColor(key.split('|')[0]); }
+function setActual(key, val)  { snapshot(); const v=parseFloat(val)||0; if(v===0)delete actualData[key];  else actualData[key]=v;  updateSummaryBar(); isDirty=true; updateCatHeaderColor(key.split('|')[0]); }
+function updateCatHeaderColor(catCode) {
+  const cat=cats.find(c=>c.code===catCode); if(!cat) return;
+  const tot=catTotal(cat);
+  if(workingMode){ const el=document.getElementById('wc-'+catCode); if(el){ const wt=getCatWorking(cat); el.style.color=wt===tot?'#eee':wt<tot?'#4d4':'#f55'; el.textContent='W:'+Math.round(wt).toLocaleString('cs-CZ'); } }
+  if(actualMode){  const el=document.getElementById('ac-'+catCode); if(el){ const at=getCatActual(cat);  el.style.color=at===tot?'#eee':at<tot?'#4d4':'#f55'; el.textContent='A:'+Math.round(at).toLocaleString('cs-CZ'); } }
+}
 function snapshot(){
   const now=Date.now();
   if(now-_undoLastTs<800) return;
@@ -1943,8 +1949,8 @@ function renderCats() {
     const arr=open?'▲':'▼';
     // W/A totals in header
     let extraHdrTotals='';
-    if(workingMode){ const wt=getCatWorking(cat); const hasW=Object.keys(workingData).some(k=>k.startsWith(cat.code+'|')&&!k.includes('__')); if(hasW){ const wc=wt===tot?'#eee':wt<tot?'#4d4':'#f55'; extraHdrTotals+=`<span style="color:${wc};font-size:9px;font-weight:600;margin-right:4px">W:${Math.round(wt).toLocaleString('cs-CZ')}</span>`; } }
-    if(actualMode){  const at=getCatActual(cat);  const hasA=Object.keys(actualData).some(k=>k.startsWith(cat.code+'|')); if(hasA){ const ac=at===tot?'#eee':at<tot?'#4d4':'#f55'; extraHdrTotals+=`<span style="color:${ac};font-size:9px;font-weight:600;margin-right:4px">A:${Math.round(at).toLocaleString('cs-CZ')}</span>`; } }
+    if(workingMode){ const wt=getCatWorking(cat); const hasW=Object.keys(workingData).some(k=>k.startsWith(cat.code+'|')&&!k.includes('__')); if(hasW){ const wc=wt===tot?'#eee':wt<tot?'#4d4':'#f55'; extraHdrTotals+=`<span id="wc-${cat.code}" style="color:${wc};font-size:9px;font-weight:600;margin-right:4px">W:${Math.round(wt).toLocaleString('cs-CZ')}</span>`; } }
+    if(actualMode){  const at=getCatActual(cat);  const hasA=Object.keys(actualData).some(k=>k.startsWith(cat.code+'|')); if(hasA){ const ac=at===tot?'#eee':at<tot?'#4d4':'#f55'; extraHdrTotals+=`<span id="ac-${cat.code}" style="color:${ac};font-size:9px;font-weight:600;margin-right:4px">A:${Math.round(at).toLocaleString('cs-CZ')}</span>`; } }
     html+=`<div class="cat-block"><div class="cat-hdr" tabindex="0" data-code="${cat.code}" onclick="toggleCat('${cat.code}')"><div><span class="cat-code">${cat.code}</span><span class="cat-label">${cat.label.toUpperCase()}</span></div><div>${extraHdrTotals}<span class="cat-total" id="ct-${cat.code}">${fmt(tot)}</span> <span id="arr-${cat.code}">${arr}</span></div></div><div class="cat-body${open}" id="body-${cat.code}">`;
 
     if(cat.type==='crew'){
@@ -2064,6 +2070,7 @@ function recalcCat(code){
   const el=document.getElementById('ct-'+code);
   if(el)el.textContent=fmt(catTotal(cats.find(c=>c.code===code)));
   updateSummaryBar();
+  updateCatHeaderColor(code);
 }
 function toggleCat(code){const b=document.getElementById('body-'+code),a=document.getElementById('arr-'+code);b.classList.toggle('open');a.textContent=b.classList.contains('open')?'▲':'▼';}
 
