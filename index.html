@@ -1635,7 +1635,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 14;
+const APP_BUILD = 15;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3089,12 +3089,18 @@ document.addEventListener('keydown',e=>{
   if(e.metaKey||e.ctrlKey||e.altKey) return;
   const tag=document.activeElement?.tagName;
   if(tag==='INPUT'||tag==='TEXTAREA'||document.activeElement?.isContentEditable) return;
-  const map={'b':'budget','p':'header','s':'summary'};
-  const tab=map[e.key?.toLowerCase()];
-  if(!tab) return;
-  e.preventDefault();
-  const btn=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim().startsWith(tab==='budget'?'BUDGET':tab==='header'?'PROJECT':'SUMMARY'));
-  showTab(tab,btn);
+  const k=e.key?.toLowerCase();
+  // Tab shortcuts
+  const tabMap={'b':'budget','p':'header','s':'summary'};
+  const tab=tabMap[k];
+  if(tab){ e.preventDefault(); const btn=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim().startsWith(tab==='budget'?'BUDGET':tab==='header'?'PROJECT':'SUMMARY')); showTab(tab,btn); return; }
+  // Toggle shortcuts
+  if(k==='f'){ e.preventDefault(); toggleFeeMode(); return; }
+  if(k==='w'){ e.preventDefault(); toggleWorking(); return; }
+  if(k==='a'){ e.preventDefault(); toggleActual(); return; }
+  if(k==='o'){ e.preventDefault(); toggleOvercost(); return; }
+  if(k==='l'){ e.preventDefault(); toggleLock(); return; }
+  if(k==='n'){ e.preventDefault(); toggleNotesPanel(); return; }
 });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 document.addEventListener('input', ()=>{if(dataLoaded)isDirty=true;});
