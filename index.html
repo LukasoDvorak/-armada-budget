@@ -352,6 +352,12 @@ let _undoHistory = [], _undoLastTs = 0;
 let currentProject = null, versionList = [], versionIndex = 0;
 
 // ── SESSION LOCK ──────────────────────────────────────────────────────────────
+// Per-tab session ID (unique per tab, even on same device)
+const TAB_ID = sessionStorage.getItem('armada_tab_id') || (()=>{
+  const id = Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+  sessionStorage.setItem('armada_tab_id', id); return id;
+})();
+// Per-device ID (stable across tabs, used for display name only)
 const DEVICE_ID = localStorage.getItem('armada_device_id') || (()=>{
   const id = Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
   localStorage.setItem('armada_device_id', id); return id;
@@ -370,7 +376,7 @@ let lockHeartbeat = null;
 async function checkAndAcquireLock(projName) {
   try {
     const lock = await dbxDownload('/projects/'+projName+'/lock.json');
-    if (lock && lock.deviceId && lock.deviceId !== DEVICE_ID && lock.ts && (Date.now()-lock.ts) < LOCK_EXPIRY_MS) {
+    if (lock && lock.deviceId && lock.deviceId !== TAB_ID && lock.ts && (Date.now()-lock.ts) < LOCK_EXPIRY_MS) {
       const age = Math.round((Date.now()-lock.ts)/1000);
       const ageStr = age < 60 ? age+'s ago' : Math.round(age/60)+' min ago';
       const ok = confirm('Project is open on '+lock.deviceName+' ('+ageStr+'). Open anyway? Changes may conflict.');
@@ -382,11 +388,11 @@ async function checkAndAcquireLock(projName) {
   return true;
 }
 async function writeLock(projName) {
-  try { await dbxUpload('/projects/'+projName+'/lock.json', {deviceId:DEVICE_ID, deviceName:getDeviceName(), ts:Date.now()}); } catch(e) {}
+  try { await dbxUpload('/projects/'+projName+'/lock.json', {deviceId:TAB_ID, deviceName:getDeviceName(), ts:Date.now()}); } catch(e) {}
 }
 async function releaseLock(projName) {
   if (!projName) return;
-  try { await dbxUpload('/projects/'+projName+'/lock.json', {deviceId:DEVICE_ID, deviceName:getDeviceName(), ts:0}); } catch(e) {}
+  try { await dbxUpload('/projects/'+projName+'/lock.json', {deviceId:TAB_ID, deviceName:getDeviceName(), ts:0}); } catch(e) {}
 }
 function startLockHeartbeat(projName) {
   if (lockHeartbeat) clearInterval(lockHeartbeat);
