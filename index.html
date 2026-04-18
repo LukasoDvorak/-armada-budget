@@ -175,13 +175,15 @@ body.locked .del-sub { display: none; }
 
 <div class="topbar">
   <span class="logo">ARMADA</span>
-  <span class="subtitle">FILM PRODUCTION BUDGET · v21</span>
+  <span class="subtitle">FILM PRODUCTION BUDGET · v22</span>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <span id="save-status">loading…</span>
     <button class="topbtn" onclick="editRates()">📋 Rates</button>
     <button class="topbtn" onclick="newProject()">✚ New</button>
     <button class="topbtn" onclick="saveAsProject()">⎘ Save As</button>
     <button class="topbtn" onclick="loadProject()">📂 Open</button>
+    <button class="topbtn" id="btn-proj-export" onclick="exportProject()" title="Export current project as JSON file">⬇ Export</button>
+    <button class="topbtn" id="btn-proj-import" onclick="importProject()" title="Import project from JSON file">⬆ Import</button>
     <button class="topbtn" id="btn-fee"     onclick="toggleFeeMode()"  title="Show column for selecting rows included in production fee">💰 Fee</button>
     <button class="topbtn" id="btn-working" onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported">🔧 Working</button>
     <button class="topbtn" id="btn-actual"  onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer">📌 Actual</button>
@@ -1354,6 +1356,47 @@ function importRates() {
         applyData({header:{}, settings:{productionFeePct:15,insurancePct:1}, cats:data.cats});
         isDirty=true; setStatus('rates imported — click Save Rates to apply');
       } catch(e) { alert('Error reading file:\n'+e.message); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+function exportProject() {
+  if (!dataLoaded) { alert('No project loaded.'); return; }
+  const payload = {
+    header: gatherHeader(),
+    settings: gatherSettings(),
+    cats, workingData, actualData,
+    feeExclusions, invoiceChecked, overcostRows, rowNotes,
+    projectNotes: getProjectNotes()
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (currentProject||'project')+'_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+async function importProject() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.cats) { alert('Invalid project file.'); return; }
+        const nameInput = await showNewProjectDialog('IMPORT PROJECT', data.header?.client||'', data.header?.agency||'');
+        if (!nameInput) return;
+        const projName = sanitize((nameInput.client||'')+'_'+(nameInput.agency||''))||'untitled';
+        const ts=new Date(), pad=n=>String(n).padStart(2,'0');
+        const fname=`budget_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
+        await dbxUpload('/projects/'+projName+'/'+fname, {...data, header:{...data.header,...nameInput}});
+        localStorage.setItem('dbx_latest_project', projName);
+        applyData(data); exitRatesMode(); setProjectState(projName); isDirty=false;
+        versionIndex=0; await loadVersionList(projName);
+        setStatus('imported \u2713 '+projName);
+      } catch(err) { alert('Error:\n'+err.message); }
     };
     reader.readAsText(file);
   };
