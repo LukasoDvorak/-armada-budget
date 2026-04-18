@@ -1270,11 +1270,12 @@ async function editRates() {
     let rd = await dbxDownload('/rates.json');
     if (!rd) rd = DEFAULT_RATES;
     applyData({header:{},settings:{productionFeePct:15,insurancePct:1},cats:rd.cats||[]});
+    const _prevProject = currentProject;
     isRatesMode=true; isDirty=false; currentProject=null;
     document.getElementById('project-name').textContent='⚙ RATES TEMPLATE';
     document.getElementById('ver-nav').style.display='none';
     document.getElementById('btn-save').textContent='💾 Save Rates';
-    document.getElementById('btn-save').onclick=saveRates;
+    document.getElementById('btn-save').onclick=()=>saveRates(_prevProject);
     setStatus('editing rates');
   } catch(e) { alert('Error:\n'+e.message); }
 }
@@ -1303,10 +1304,16 @@ async function newProjectFromRates() {
     applyData(newData); setProjectState(projName); setStatus('new project ✓'); versionIndex=0; isDirty=false; await loadVersionList(projName);
   } catch(e) { alert('Error:\n'+e.message); }
 }
-async function saveRates() {
+async function saveRates(prevProject) {
   try {
     await dbxUpload('/rates.json', {version:new Date().getFullYear().toString(),updated:new Date().toISOString().slice(0,10),cats});
     isDirty=false; setStatus('rates saved ✓ '+new Date().toLocaleTimeString('en-GB'));
+    // Return to previous project
+    if (prevProject) {
+      await loadProjectByName(prevProject);
+    } else {
+      exitRatesMode();
+    }
   } catch(e) { alert('Error:\n'+e.message); }
 }
 function exitRatesMode() {
