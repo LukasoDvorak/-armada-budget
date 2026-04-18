@@ -1349,7 +1349,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
-const DBX_ROOT = '/Apps/armada-budget';
+const DBX_ROOT = '';
 
 async function _dbxVerifier() {
   const arr = new Uint8Array(32); crypto.getRandomValues(arr);
@@ -1369,7 +1369,8 @@ async function dbxConnect() {
     redirect_uri: window.location.origin + '/',
     code_challenge: ch,
     code_challenge_method: 'S256',
-    token_access_type: 'offline'
+    token_access_type: 'offline',
+    scope: 'account_info.read files.content.write files.content.read files.metadata.read files.metadata.write'
   });
   window.location.href = 'https://www.dropbox.com/oauth2/authorize?' + p;
 }
