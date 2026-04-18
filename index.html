@@ -119,6 +119,7 @@ tr.selected td { background: #fff3e6 !important; }
 .ver-chip { padding: 3px 8px; border-radius: 3px; font-size: 9px; border: 1px solid #2a2a2a; background: #1e1e1e; color: #555; cursor: pointer; white-space: nowrap; letter-spacing: 0.5px; }
 .ver-chip:hover { border-color: #444; color: #aaa; }
 .ver-chip.active { border-color: #ff6b00; color: #ff6b00; background: #1e1000; }
+.ver-chip.autosave { border-color: #00aa44; color: #00aa44; background: #001a0a; }
 .btn-finder { background: none; border: 1px solid #2a2a2a; border-radius: 3px; color: #555; font-size: 10px; padding: 3px 8px; cursor: pointer; font-family: inherit; }
 .btn-finder:hover { border-color: #555; color: #aaa; }
 /* Extra columns */
@@ -349,6 +350,7 @@ body.locked .del-sub { display: none; }
 let cats = [], dataLoaded = false, isDirty = false;
 let _undoHistory = [], _undoLastTs = 0;
 let currentProject = null, versionList = [], versionIndex = 0;
+let autosaveLoaded = false, autosaveTime = null;
 let workingMode = false, workingData = {};
 let actualMode  = false, actualData  = {};
 let feeMode     = false, feeExclusions = {};  // keys excluded from fee base
@@ -1177,6 +1179,7 @@ async function loadDefault() {
         applyData(asData); exitRatesMode();
         setProjectState(projName);
         setStatus('loaded ✓ autosave');
+        autosaveLoaded=true; autosaveTime=new Date();
         versionIndex=0; versionList=files; renderVersionNav();
         return;
       }
@@ -1187,6 +1190,7 @@ async function loadDefault() {
     if (!data) throw new Error('File not found');
     applyData(data); exitRatesMode();
     setProjectState(projName);
+    autosaveLoaded=false;
     setStatus('loaded ✓ '+formatFilename(files[0]));
     versionIndex=0; versionList=files; renderVersionNav();
   } catch(e) { setStatus('load error'); alert('Error loading project:\n'+e.message); throw e; }
@@ -1252,6 +1256,7 @@ async function saveData(checkpoint=false) {
       setStatus('saved ✓ '+new Date().toLocaleTimeString('en-GB'));
       versionIndex=0; await loadVersionList(projName);
     } else {
+      autosaveTime=new Date(); if(autosaveLoaded) renderVersionNav();
       setStatus('autosaved ✓ '+new Date().toLocaleTimeString('en-GB'));
     }
     isDirty=false;
@@ -1299,30 +1304,48 @@ async function loadVersionList(project) {
 function renderVersionNav() {
   const nav=document.getElementById('ver-nav'), chips=document.getElementById('ver-chips');
   const prev=document.getElementById('ver-prev'), next=document.getElementById('ver-next');
-  if (!versionList.length) { nav.style.display='none'; return; }
+  if (\!versionList.length && \!autosaveLoaded) { nav.style.display='none'; return; }
   nav.style.display='flex';
   const total=versionList.length;
+  chips.innerHTML='';
+  if (autosaveLoaded && autosaveTime) {
+    const hh=String(autosaveTime.getHours()).padStart(2,'0'),mm=String(autosaveTime.getMinutes()).padStart(2,'0'),ss=String(autosaveTime.getSeconds()).padStart(2,'0');
+    const aChip=document.createElement('span');
+    aChip.className='ver-chip autosave active';
+    aChip.textContent='⚡ autosave '+hh+':'+mm+':'+ss;
+    aChip.title='Currently loaded from autosave (newest)';
+    chips.appendChild(aChip);
+    for(let i=0;i<Math.min(2,total);i++){
+      chips.appendChild(Object.assign(document.createElement('span'),{textContent:' '}));
+      const chip=document.createElement('span');
+      chip.className='ver-chip';
+      chip.textContent=formatFilename(versionList[i]); chip.title=versionList[i];
+      const idx=i; chip.onclick=()=>loadVersionByIndex(idx);
+      chips.appendChild(chip);
+    }
+    prev.disabled=(total===0); next.disabled=true;
+    return;
+  }
   let start=Math.max(0,versionIndex-1), end=Math.min(total,start+3);
   if(end-start<3) start=Math.max(0,end-3);
-  chips.innerHTML='';
   for(let i=start;i<end;i++){
     const chip=document.createElement('span');
     chip.className='ver-chip'+(i===versionIndex?' active':'');
     chip.textContent=formatFilename(versionList[i]); chip.title=versionList[i];
     const idx=i; chip.onclick=()=>loadVersionByIndex(idx);
     chips.appendChild(chip);
-    if(i<end-1) chips.appendChild(Object.assign(document.createElement('span'),{textContent:' ',style:'color:#333'}));
+    if(i<end-1) chips.appendChild(Object.assign(document.createElement('span'),{textContent:' '}));
   }
   prev.disabled=(versionIndex>=total-1); next.disabled=(versionIndex<=0);
 }
-async function navVersion(dir) { const n=versionIndex+(-dir); if(n>=0&&n<versionList.length) await loadVersionByIndex(n); }
+async function navVersion(dir) { if(autosaveLoaded&&dir===-1){await loadVersionByIndex(0);return;} const n=versionIndex+(-dir); if(n>=0&&n<versionList.length) await loadVersionByIndex(n); }
 async function loadVersionByIndex(idx) {
   const file=versionList[idx];
   try {
     const data=await dbxDownload('/projects/'+currentProject+'/'+file);
     if(!data) throw new Error('File not found');
     applyData(data);
-    versionIndex=idx; setStatus('loaded ✓ '+formatFilename(file)); renderVersionNav(); isDirty=false;
+    autosaveLoaded=false; versionIndex=idx; setStatus('loaded ✓ '+formatFilename(file)); renderVersionNav(); isDirty=false;
   } catch(e) { alert('Load error:\n'+e.message); }
 }
 
