@@ -215,9 +215,104 @@ body.locked .del-sub { display: none; }
   <textarea id="notes-area" placeholder="Write your project notes here..." oninput="onNotesInput()" style="flex:1;width:100%;box-sizing:border-box;font-family:inherit;font-size:12px;color:#ddd;background:#111;border:1px solid #333;border-radius:5px;padding:10px;resize:none;outline:none;line-height:1.6"></textarea>
 </div>
 
+<div id="help-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;align-items:center;justify-content:center">
+  <div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;width:min(720px,95vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.6)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #2a2a2a">
+      <span style="font-size:13px;font-weight:700;letter-spacing:2px;color:#ff6b00">ARMADA BUDGET — USER GUIDE</span>
+      <button onclick="document.getElementById('help-overlay').style.display='none'" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;line-height:1;padding:0 4px">×</button>
+    </div>
+    <div style="overflow-y:auto;padding:20px 24px;font-size:12px;line-height:1.7;color:#ccc">
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">OVERVIEW</h3>
+      <p style="margin:0 0 16px">Armada Budget is a single-page film production budgeting tool. All data is stored in your Dropbox — no server, no account required beyond Dropbox.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">CONNECTING DROPBOX</h3>
+      <p style="margin:0 0 16px">Click <b style="color:#eee">☁ Dropbox</b> in the top bar and follow the authorisation flow. Once connected, your projects and rates are synced automatically. The last opened project loads on startup across all your devices.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">NAVIGATION</h3>
+      <p style="margin:0 0 4px">Three tabs at the top switch between views:</p>
+      <ul style="margin:0 0 16px;padding-left:18px">
+        <li><b style="color:#eee">Budget</b> — the main line-by-line budget</li>
+        <li><b style="color:#eee">Project Info</b> — client, agency, director, deliverables, buyout</li>
+        <li><b style="color:#eee">Summary</b> — category totals, fee, insurance, grand total; PDF &amp; Excel export</li>
+      </ul>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">BUDGET — CATEGORIES</h3>
+      <p style="margin:0 0 4px">The budget is made up of categories (A, B, C…). Each category has one of four types:</p>
+      <ul style="margin:0 0 4px;padding-left:18px">
+        <li><b style="color:#eee">Crew</b> — prep days × rate + shoot days × rate. Supports overtime and transport sub-sections.</li>
+        <li><b style="color:#eee">Transport</b> — vehicles with sub-rows (day rate, mileage, overtime).</li>
+        <li><b style="color:#eee">Std</b> — simple qty × rate rows (post-production, studio, etc.).</li>
+        <li><b style="color:#eee">Talent</b> — casting sessions and talent with sub-rows and automatic agency fee calculation.</li>
+      </ul>
+      <p style="margin:0 0 16px">Click a category header to expand/collapse it. Drag rows by the ⠿ handle to reorder. Right-click a row to delete it. Double-click any label to rename it inline.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">EDITING VALUES</h3>
+      <p style="margin:0 0 16px">Click any number cell to enter edit mode — the raw number input appears. Press <b style="color:#eee">Tab</b> or <b style="color:#eee">Enter</b> to confirm and move on. The display shows the formatted value with CZK when not editing. Qty columns (days, km, count) show plain numbers; Rate and Total columns show CZK.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">FEE &amp; INSURANCE</h3>
+      <p style="margin:0 0 4px">Production fee and insurance percentages are set in the settings panel (gear icon or Project Info tab). You can switch either to a flat amount. Fee is calculated on the subtotal; insurance on subtotal + fee.</p>
+      <p style="margin:0 0 16px">Enable <b style="color:#eee">💰 Fee</b> mode to show a checkbox column — uncheck any row to exclude it from the fee base.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">WORKING &amp; ACTUAL MODES</h3>
+      <p style="margin:0 0 4px">These are two independent data layers that sit alongside your budget without changing it:</p>
+      <ul style="margin:0 0 16px;padding-left:18px">
+        <li><b style="color:#eee">🔧 Working</b> — internal pre-production estimates. Green = under budget, red = over.</li>
+        <li><b style="color:#eee">📌 Actual</b> — real costs as the shoot progresses. Same colour logic.</li>
+      </ul>
+      <p style="margin:0 0 16px">Right-click the Working or Actual button for options to clear or copy data between layers. W GRAND and A GRAND totals appear in the sticky bar at the bottom.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">OVERCOST</h3>
+      <p style="margin:0 0 16px">Enable <b style="color:#eee">⚠ Overcost</b> to add a special section for costs that exceed the original budget. These roll up into their own total and are tracked separately in Working/Actual.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">SAVING &amp; VERSIONS</h3>
+      <ul style="margin:0 0 16px;padding-left:18px">
+        <li><b style="color:#eee">Autosave</b> — runs automatically every 3 minutes and writes to <code>autosave.json</code>. Shown as a green ⚡ chip in the version bar.</li>
+        <li><b style="color:#eee">💾 Save</b> — creates a timestamped checkpoint file in Dropbox. Use this for milestones.</li>
+        <li><b style="color:#eee">Save As / New Version</b> — available in the Save dropdown.</li>
+      </ul>
+      <p style="margin:0 0 16px">The version navigator (◀ ▶ chips below the project name) lets you browse and load previous checkpoints. Opening a project always loads the latest autosave if one exists.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">ALTERNATIVE CURRENCY</h3>
+      <p style="margin:0 0 16px">Enable the alt currency toggle in the settings panel to show a second column with values converted at your chosen rate (e.g. EUR at 25 CZK). Appears in the budget, summary, PDF and Excel exports.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">EXPORT</h3>
+      <ul style="margin:0 0 16px;padding-left:18px">
+        <li><b style="color:#eee">PDF</b> — full formatted budget from the Summary tab.</li>
+        <li><b style="color:#eee">Excel</b> — two-sheet workbook (summary + detail) from the Summary tab.</li>
+        <li><b style="color:#eee">Project Export / Import</b> — share a full project JSON with a colleague via File menu.</li>
+      </ul>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">SESSION LOCK</h3>
+      <p style="margin:0 0 16px">If you open the same project in two tabs or on two devices simultaneously, a warning appears. The lock expires after 1 minute of inactivity and is released automatically when you close the tab. Use <b style="color:#eee">🔒 Lock</b> to manually lock the UI against accidental edits.</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">INSTALLING AS AN APP (PWA)</h3>
+      <p style="margin:0 0 4px"><b style="color:#eee">Mac (Safari):</b> File → Add to Dock</p>
+      <p style="margin:0 0 16px"><b style="color:#eee">iPad / iPhone (Safari):</b> Share → Add to Home Screen</p>
+
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">KEYBOARD SHORTCUTS</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+        <tr style="color:#666;font-size:10px;letter-spacing:1px"><th style="text-align:left;padding:3px 8px 3px 0;font-weight:600">KEY</th><th style="text-align:left;padding:3px 0;font-weight:600">ACTION</th></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">B</td><td style="padding:3px 0">Switch to Budget tab</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">P</td><td style="padding:3px 0">Switch to Project Info tab</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">S</td><td style="padding:3px 0">Switch to Summary tab</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">F</td><td style="padding:3px 0">Toggle Fee column</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">W</td><td style="padding:3px 0">Toggle Working mode</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">A</td><td style="padding:3px 0">Toggle Actual mode</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">O</td><td style="padding:3px 0">Toggle Overcost section</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">L</td><td style="padding:3px 0">Toggle Lock</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">N</td><td style="padding:3px 0">Toggle Notes panel</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">⌘⇧S</td><td style="padding:3px 0">Save checkpoint</td></tr>
+      </table>
+      <p style="margin:0;color:#555;font-size:10px">Shortcuts are disabled while typing in any input field.</p>
+    </div>
+  </div>
+</div>
+
 <div id="zoom-wrapper">
 <div class="topbar">
   <span class="logo">ARMADA</span>
+  <button onclick="document.getElementById('help-overlay').style.display='flex'" title="User guide" style="background:none;border:1px solid #444;border-radius:50%;width:18px;height:18px;color:#666;font-size:10px;font-weight:700;cursor:pointer;padding:0;line-height:1;flex-shrink:0;margin-left:2px">?</button>
   <span class="subtitle">FILM PRODUCTION BUDGET · v27 · <span id="build-label"></span></span>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <span id="save-status">loading…</span>
@@ -1635,7 +1730,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 15;
+const APP_BUILD = 16;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3085,6 +3180,8 @@ async function exportExcel(){
 
 // ── KEYBOARD / AUTOSAVE ───────────────────────────────────────────────────────
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==='S'){e.preventDefault();saveData(true);}});
+document.getElementById('help-overlay').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('help-overlay').style.display='none';});
 document.addEventListener('keydown',e=>{
   if(e.metaKey||e.ctrlKey||e.altKey) return;
   const tag=document.activeElement?.tagName;
