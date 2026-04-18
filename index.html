@@ -1634,7 +1634,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 6;
+const APP_BUILD = 7;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -1841,7 +1841,7 @@ function fmt(n)    { return Math.round(n).toLocaleString('cs-CZ')+' CZK'; }
 function altEnabled() { return document.getElementById('alt_enabled').checked; }
 function altName()    { return document.getElementById('alt_name').value||'EUR'; }
 function fmtAlt(n) { const r=parseFloat(document.getElementById('alt_rate').value)||25; return Math.round(n/r).toLocaleString('cs-CZ')+' '+altName(); }
-function onAltChange() { renderCats(); renderSummary(); }
+function onAltChange() { isDirty=true; renderCats(); renderSummary(); }
 
 function rowTotal(row, isOT) {
   if (row.van) return row.subs.reduce((s,[,q,r])=>s+q*r,0);
@@ -2395,7 +2395,7 @@ function showTab(tab,btn){
   if(btn)btn.classList.add('active');
   if(tab==='summary')renderSummary();
 }
-function toggleAlt(){ renderCats(); renderSummary(); }
+function toggleAlt(){ isDirty=true; renderCats(); renderSummary(); }
 function renderSummary(){
   const show=altEnabled();
   document.getElementById('sum-thead-row').innerHTML=`<th class="thl">Category</th><th>CZK Total</th>${show?`<th class="th-alt">${altName()}</th>`:''}`;
