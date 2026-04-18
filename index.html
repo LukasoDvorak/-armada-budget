@@ -180,18 +180,23 @@ body.locked .del-sub { display: none; }
 
 <div class="topbar">
   <span class="logo">ARMADA</span>
-  <span class="subtitle">FILM PRODUCTION BUDGET · v23</span>
+  <span class="subtitle">FILM PRODUCTION BUDGET · v24</span>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <span id="save-status">loading…</span>
+    <button class="topbtn" id="btn-dbx" onclick="dbxToggle()" title="Connect to Dropbox">☁ Dropbox</button>
     <button class="topbtn" onclick="editRates()">📋 Rates</button>
-    <button class="topbtn" onclick="newProject()">✚ New</button>
-    <button class="topbtn" onclick="loadProject()">📂 Open</button>
-    <!-- Project file dropdown -->
+    <button class="topbtn" id="btn-fee"     onclick="toggleFeeMode()"  title="Show column for selecting rows included in production fee">💰 Fee</button>
+    <button class="topbtn" id="btn-working" onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported">🔧 Working</button>
+    <button class="topbtn" id="btn-actual"  onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer">📌 Actual</button>
+    <button class="topbtn" id="btn-notes"   onclick="toggleNotesPanel()" title="Project notes">📝 Notes</button>
+    <button class="topbtn" id="btn-lock"    onclick="toggleLock()"     title="Lock budget">🔒 Lock</button>
+    <button class="topbtn" id="btn-overcost" onclick="toggleOvercost()" title="Overcost items above budget">⚠ Overcost</button>
+    <!-- File dropdown -->
     <div class="btn-drop" id="drop-file">
       <button class="topbtn" onclick="toggleDrop('drop-file')">📁 File ▾</button>
-      <div class="btn-drop-menu" id="drop-file-menu">
-        <button onclick="closeDrop('drop-file');saveAsProject()">⎘ Save As</button>
-        <button onclick="closeDrop('drop-file');addVersion()">⊕ New Version</button>
+      <div class="btn-drop-menu" id="drop-file-menu" style="left:auto;right:0">
+        <button onclick="closeDrop('drop-file');newProject()">✚ New</button>
+        <button onclick="closeDrop('drop-file');loadProject()">📂 Open</button>
         <hr class="sep">
         <button id="btn-proj-export" onclick="closeDrop('drop-file');exportProject()">⬇ Export Project</button>
         <button id="btn-proj-import" onclick="closeDrop('drop-file');importProject()">⬆ Import Project</button>
@@ -200,13 +205,6 @@ body.locked .del-sub { display: none; }
         <button id="btn-rates-import" onclick="closeDrop('drop-file');importRates()" style="display:none">⬆ Import Rates</button>
       </div>
     </div>
-    <button class="topbtn" id="btn-fee"     onclick="toggleFeeMode()"  title="Show column for selecting rows included in production fee">💰 Fee</button>
-    <button class="topbtn" id="btn-working" onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported">🔧 Working</button>
-    <button class="topbtn" id="btn-actual"  onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer">📌 Actual</button>
-    <button class="topbtn" id="btn-notes"   onclick="toggleNotesPanel()" title="Project notes">📝 Notes</button>
-    <button class="topbtn" id="btn-lock"    onclick="toggleLock()"     title="Lock budget">🔒 Lock</button>
-    <button class="topbtn" id="btn-overcost" onclick="toggleOvercost()" title="Overcost items above budget">⚠ Overcost</button>
-    <button class="topbtn" id="btn-dbx" onclick="dbxToggle()" title="Connect to Dropbox">☁ Connect Dropbox</button>
     <!-- Save dropdown -->
     <div class="btn-drop" id="drop-save">
       <button class="topbtn topbtn-orange" id="btn-save" onclick="saveData(true)">💾 Save ▾</button>
