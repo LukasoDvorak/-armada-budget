@@ -178,12 +178,18 @@ body.locked .del-sub { display: none; }
   <textarea id="notes-area" placeholder="Write your project notes here..." oninput="onNotesInput()" style="flex:1;width:100%;box-sizing:border-box;font-family:inherit;font-size:12px;color:#ddd;background:#111;border:1px solid #333;border-radius:5px;padding:10px;resize:none;outline:none;line-height:1.6"></textarea>
 </div>
 
+<div id="zoom-wrapper">
 <div class="topbar">
   <span class="logo">ARMADA</span>
-  <span class="subtitle">FILM PRODUCTION BUDGET · v25</span>
+  <span class="subtitle">FILM PRODUCTION BUDGET · v27</span>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <span id="save-status">loading…</span>
     <button class="topbtn" id="btn-dbx" onclick="dbxToggle()" title="Connect to Dropbox">☁ Dropbox</button>
+    <span style="display:flex;align-items:center;gap:0;border:1px solid #444;border-radius:4px;overflow:hidden">
+      <button class="topbtn" onclick="appZoom(-1)" title="Zoom out" style="border:none;border-radius:0;padding:5px 8px">A−</button>
+      <span id="zoom-label" style="font-size:9px;color:#666;padding:0 5px;min-width:28px;text-align:center;cursor:pointer" onclick="appZoomReset()" title="Reset zoom">100%</span>
+      <button class="topbtn" onclick="appZoom(+1)" title="Zoom in"  style="border:none;border-radius:0;padding:5px 8px">A+</button>
+    </span>
     <button class="topbtn" id="btn-fee"     onclick="toggleFeeMode()"  title="Show column for selecting rows included in production fee">💰 Fee</button>
     <button class="topbtn" id="btn-working" onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported">🔧 Working</button>
     <button class="topbtn" id="btn-actual"  onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer">📌 Actual</button>
@@ -193,7 +199,7 @@ body.locked .del-sub { display: none; }
     <!-- File dropdown -->
     <div class="btn-drop" id="drop-file">
       <button class="topbtn" onclick="toggleDrop('drop-file')">📁 File ▾</button>
-      <div class="btn-drop-menu" id="drop-file-menu" style="left:auto;right:0">
+      <div class="btn-drop-menu" id="drop-file-menu" style="left:0">
         <button onclick="closeDrop('drop-file');newProject()">✚ New</button>
         <button onclick="closeDrop('drop-file');loadProject()">📂 Open</button>
         <hr class="sep">
@@ -335,6 +341,7 @@ body.locked .del-sub { display: none; }
   </div>
 </div>
 
+</div><!-- /zoom-wrapper -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
@@ -870,6 +877,23 @@ function feeBase() {
 }
 
 // ── TOGGLES ───────────────────────────────────────────────────────────────────
+// ── ZOOM ──────────────────────────────────────────────────────────────────────
+const ZOOM_STEPS = [70,80,90,100,110,120,130,150];
+let _zoomIdx = ZOOM_STEPS.indexOf(parseInt(localStorage.getItem('app_zoom')||'100'));
+if(_zoomIdx<0) _zoomIdx = ZOOM_STEPS.indexOf(100);
+function _applyZoom(){
+  const pct = ZOOM_STEPS[_zoomIdx];
+  document.getElementById('zoom-wrapper').style.zoom = pct+'%';
+  document.getElementById('zoom-label').textContent = pct+'%';
+  localStorage.setItem('app_zoom', pct);
+}
+function appZoom(dir){
+  _zoomIdx = Math.max(0, Math.min(ZOOM_STEPS.length-1, _zoomIdx+dir));
+  _applyZoom();
+}
+function appZoomReset(){ _zoomIdx = ZOOM_STEPS.indexOf(100); _applyZoom(); }
+_applyZoom();
+
 // ── DROPDOWN BUTTONS ─────────────────────────────────────────────────────────
 function toggleDrop(id) {
   const menu = document.getElementById(id+'-menu');
