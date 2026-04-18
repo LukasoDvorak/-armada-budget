@@ -1358,7 +1358,7 @@ async function saveData(checkpoint=false) {
     setProjectState(projName);
     if(checkpoint){
       setStatus('saved ✓ '+new Date().toLocaleTimeString('en-GB'));
-      versionIndex=0; await loadVersionList(projName);
+      autosaveLoaded=false; versionIndex=0; await loadVersionList(projName);
     } else {
       autosaveTime=new Date(); if(autosaveLoaded) renderVersionNav();
       setStatus('autosaved ✓ '+new Date().toLocaleTimeString('en-GB'));
@@ -1635,7 +1635,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 11;
+const APP_BUILD = 12;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
