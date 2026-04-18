@@ -1621,6 +1621,28 @@ function dbxToggle() {
 }
 
 // ── APPLY DATA ────────────────────────────────────────────────────────────────
+function purgeStaleData() {
+  const valid = new Set();
+  cats.forEach(cat => {
+    if (cat.type==='crew') {
+      cat.sections.forEach((sec,si) => sec.rows.forEach((_,ri) => valid.add(crewKey(cat.code,si,ri))));
+    } else if (cat.type==='transport') {
+      cat.vans.forEach((_,vi) => valid.add(vanKey(cat.code,vi)));
+    } else if (cat.type==='talent') {
+      cat.sections.forEach((sec,si) => sec.rows.forEach((_,ri) => valid.add(crewKey(cat.code,si,ri))));
+    } else if (cat.type==='std') {
+      cat.rows.forEach((_,ri) => valid.add(stdKey(cat.code,ri)));
+    }
+  });
+  // Keep __ meta-keys (working/actual fee, ins)
+  [workingData, actualData].forEach(d => Object.keys(d).filter(k=>k.startsWith('__')).forEach(k=>valid.add(k)));
+  let n=0;
+  [workingData, actualData, feeExclusions, invoiceChecked].forEach(d => {
+    Object.keys(d).forEach(k => { if(!valid.has(k)){ delete d[k]; n++; } });
+  });
+  return n;
+}
+
 function applyData(data) {
   cats=data.cats||[]; loadHeader(data.header); loadSettings(data.settings);
   workingData=data.workingData||{}; actualData=data.actualData||{}; feeExclusions=data.feeExclusions||{};
@@ -1629,7 +1651,7 @@ function applyData(data) {
   // Overcost mode is NOT auto-enabled on load — user must enable manually
   // (keep mode state as-is; just ensure UI button reflects current state)
   document.getElementById('btn-overcost')?.classList.toggle('mode-on', overcostMode);
-  dataLoaded=true; recalcAllAgencyFees(); renderCats(); updateSummaryBar();
+  dataLoaded=true; purgeStaleData(); recalcAllAgencyFees(); renderCats(); updateSummaryBar();
 }
 function loadHeader(h) {
   if(!h) return;
