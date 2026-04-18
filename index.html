@@ -519,7 +519,7 @@ function getCatWorking(cat) { const p=cat.code+'|'; return Object.entries(workin
     const inp=nc.querySelector('.nc-i'); if(!inp) return;
     inp.setAttribute('tabindex','-1');
     const v=parseFloat(inp.value)||0;
-    const d=nc.querySelector('.nc-d'); if(d) d.textContent=v?fmt(v):'';
+    const d=nc.querySelector('.nc-d'); if(d) d.textContent=v?(nc.dataset.fmt==='raw'?String(v):fmt(v)):'';
   }
   window.ncUpdDisp=function(inp){
     if(!inp) return;
@@ -1603,7 +1603,12 @@ function deleteTalentSub(code,si,ri,k){cats.find(c=>c.code===code).sections[si].
 function numInp(val,onchange){
   const v=parseFloat(val)||0, d=v?fmt(v):'';
   const oc=onchange.replace(/"/g,'&quot;');
-  return `<div class="nc" tabindex="0"><span class="nc-d">${d}</span><input class="nc-i" type="number" tabindex="-1" value="${v}" onchange="${oc}"></div>`;
+  return `<div class="nc" tabindex="0"><span class="nc-d">${d}</span><input class="nc-i" type="number" tabindex="-1" value="${v}" oninput="${oc}"></div>`;
+}
+function numInpRaw(val,onchange){
+  const v=parseFloat(val)||0, d=v?String(v):'';
+  const oc=onchange.replace(/"/g,'&quot;');
+  return `<div class="nc" data-fmt="raw" tabindex="0"><span class="nc-d">${d}</span><input class="nc-i" type="number" tabindex="-1" value="${v}" oninput="${oc}"></div>`;
 }
 function updateCrew(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f]=parseFloat(val)||0;const r=cat.sections[si].rows[ri],el=document.getElementById(`crow-${code}-${si}-${ri}`);if(el)el.textContent=(r[2]*r[3]+r[4]*r[5])>0?fmt(r[2]*r[3]+r[4]*r[5]):'—';recalcCat(code);}
 function updateCrewText(code,si,ri,f,val){cats.find(c=>c.code===code).sections[si].rows[ri][f]=val;}
@@ -1707,8 +1712,8 @@ function renderCrewSec(cat, si, sec, counter) {
         const[lbl,cnt,qty,rate]=row, tot=cnt*qty*rate;
         html+=`<tr${bg} ${dnd} oncontextmenu="ctxCrew(event,'${cat.code}',${si},${ri})">
           <td class="drag-col">⠿</td><td>${rowCode(cat,++counter.n)}${makeEditable(lbl,`updateCrewText('${cat.code}',${si},${ri},0,v)`)}<div class="item-note" contenteditable="true" onblur="setRowNote('${wk}',this.textContent.trim())">${rowNotes[wk]||''}</div></td>
-          <td>${numInp(cnt,`updateOTTriple('${cat.code}',${si},${ri},0,this.value)`)}</td>
-          <td>${numInp(qty,`updateOTTriple('${cat.code}',${si},${ri},1,this.value)`)}</td>
+          <td>${numInpRaw(cnt,`updateOTTriple('${cat.code}',${si},${ri},0,this.value)`)}</td>
+          <td>${numInpRaw(qty,`updateOTTriple('${cat.code}',${si},${ri},1,this.value)`)}</td>
           <td>${numInp(rate,`updateOTTriple('${cat.code}',${si},${ri},2,this.value)`)}</td>
           <td class="tdr" id="ot-${cat.code}-${si}-${ri}">${fmt(tot)}</td>
           ${extraCols(tot,wk)}</tr>`;
@@ -1716,7 +1721,7 @@ function renderCrewSec(cat, si, sec, counter) {
         const[lbl,ppl,rate]=row;
         html+=`<tr${bg} ${dnd} oncontextmenu="ctxCrew(event,'${cat.code}',${si},${ri})">
           <td class="drag-col">⠿</td><td>${rowCode(cat,++counter.n)}${makeEditable(lbl,`updateCrewText('${cat.code}',${si},${ri},0,v)`)}<div class="item-note" contenteditable="true" onblur="setRowNote('${wk}',this.textContent.trim())">${rowNotes[wk]||''}</div></td>
-          <td>${numInp(ppl,`updateOT('${cat.code}',${si},${ri},0,this.value)`)}</td>
+          <td>${numInpRaw(ppl,`updateOT('${cat.code}',${si},${ri},0,this.value)`)}</td>
           <td style="text-align:center;color:#bbb;font-size:10px">×</td>
           <td>${numInp(rate,`updateOT('${cat.code}',${si},${ri},1,this.value)`)}</td>
           <td class="tdr" id="ot-${cat.code}-${si}-${ri}">${fmt(ppl*rate)}</td>
@@ -1745,8 +1750,8 @@ function renderCrewSec(cat, si, sec, counter) {
         html+=`<tr${bg} ${dnd} oncontextmenu="ctxCrew(event,'${cat.code}',${si},${ri})">
           <td class="drag-col">⠿</td>
           <td colspan="2">${rowCode(cat,++counter.n)}${makeEditable(name,`updateCrewText('${cat.code}',${si},${ri},0,v)`)}<div class="item-note" contenteditable="true" onblur="setRowNote('${wk}',this.textContent.trim())">${rowNotes[wk]||''}</div></td>
-          <td>${numInp(cnt,`updateCrewTriple('${cat.code}',${si},${ri},0,this.value)`)}</td>
-          <td>${numInp(qty,`updateCrewTriple('${cat.code}',${si},${ri},1,this.value)`)}</td>
+          <td>${numInpRaw(cnt,`updateCrewTriple('${cat.code}',${si},${ri},0,this.value)`)}</td>
+          <td>${numInpRaw(qty,`updateCrewTriple('${cat.code}',${si},${ri},1,this.value)`)}</td>
           <td>${numInp(rate,`updateCrewTriple('${cat.code}',${si},${ri},2,this.value)`)}</td>
           <td class="tdr" style="font-weight:600" id="ct-${cat.code}-${si}-${ri}">${tot>0?fmt(tot):'—'}</td>
           ${extraCols(tot,wk)}</tr>`;
@@ -1766,9 +1771,9 @@ function renderCrewSec(cat, si, sec, counter) {
         html+=`<tr${bg} ${dnd} oncontextmenu="ctxCrew(event,'${cat.code}',${si},${ri})">
           <td class="drag-col">⠿</td>
           <td>${rowCode(cat,++counter.n)}${makeEditable(role,`updateCrewText('${cat.code}',${si},${ri},0,v)`)}<div class="item-note" contenteditable="true" onblur="updateCrewText('${cat.code}',${si},${ri},1,this.textContent.trim())">${note||''}</div></td>
-          <td>${numInp(pd,`updateCrew('${cat.code}',${si},${ri},2,this.value)`)}</td>
+          <td>${numInpRaw(pd,`updateCrew('${cat.code}',${si},${ri},2,this.value)`)}</td>
           <td>${numInp(pr,`updateCrew('${cat.code}',${si},${ri},3,this.value)`)}</td>
-          <td>${numInp(sd,`updateCrew('${cat.code}',${si},${ri},4,this.value)`)}</td>
+          <td>${numInpRaw(sd,`updateCrew('${cat.code}',${si},${ri},4,this.value)`)}</td>
           <td>${numInp(sr,`updateCrew('${cat.code}',${si},${ri},5,this.value)`)}</td>
           <td class="tdr" style="font-weight:600" id="crow-${cat.code}-${si}-${ri}">${tot>0?fmt(tot):'—'}</td>
           ${extraCols(tot,wk)}</tr>`;
