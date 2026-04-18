@@ -1304,7 +1304,7 @@ async function loadVersionList(project) {
 function renderVersionNav() {
   const nav=document.getElementById('ver-nav'), chips=document.getElementById('ver-chips');
   const prev=document.getElementById('ver-prev'), next=document.getElementById('ver-next');
-  if (\!versionList.length && \!autosaveLoaded) { nav.style.display='none'; return; }
+  if (!versionList.length && !autosaveLoaded) { nav.style.display='none'; return; }
   nav.style.display='flex';
   const total=versionList.length;
   chips.innerHTML='';
