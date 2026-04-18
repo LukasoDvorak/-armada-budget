@@ -331,8 +331,8 @@ body.locked .del-sub { display: none; }
     <div class="st-part"><span class="st-label">SUBTOTAL</span><span id="st-sub" style="color:#ccc;font-weight:600;font-size:12px">—</span></div>
     <div class="st-part"><span class="st-label">FEE</span><span id="st-fee" style="color:#888;font-size:11px">—</span></div>
     <div class="st-part"><span class="st-label">INS</span><span id="st-ins" style="color:#888;font-size:11px">—</span></div>
-    <div class="st-part" id="st-working-part" style="display:none"><span class="st-label" style="color:#4d4">WORKING</span><span id="st-working" style="color:#4d4;font-weight:700;font-size:13px">—</span></div>
-  <div class="st-part" id="st-actual-part" style="display:none"><span class="st-label" style="color:#6d6">ACTUAL</span><span id="st-actual" style="color:#6d6;font-weight:700;font-size:13px">—</span></div>
+    <div class="st-part" id="st-working-part" style="display:none"><span class="st-label" style="color:#4d4">W GRAND</span><span id="st-working" style="color:#4d4;font-weight:700;font-size:13px">—</span><span id="st-working-sub" style="color:#4d4;font-size:9px;opacity:0.7">—</span></div>
+  <div class="st-part" id="st-actual-part" style="display:none"><span class="st-label" style="color:#6d6">A GRAND</span><span id="st-actual" style="color:#6d6;font-weight:700;font-size:13px">—</span><span id="st-actual-sub" style="color:#6d6;font-size:9px;opacity:0.7">—</span></div>
   <div class="st-part" style="display:none"><span class="st-label" style="color:#ff9966">OVERCOST</span><span id="st-oc" style="color:#ff9966;font-size:11px">—</span></div>
   </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end">
@@ -2148,9 +2148,27 @@ function updateSummaryBar(){
   const stOc=document.getElementById('st-oc');
   if(stOc){ const ocG=overcostGrandTotal(); stOc.closest('.st-part').style.display=overcostMode&&ocG>0?'flex':'none'; stOc.textContent=fmtK(ocG); }
   const stWp=document.getElementById('st-working-part');
-  if(stWp){ stWp.style.display=workingMode?'flex':'none'; if(workingMode)document.getElementById('st-working').textContent=fmtK(workingTotal()); }
+  if(stWp){ stWp.style.display=workingMode?'flex':'none'; if(workingMode){
+    const _wTot=workingTotal();
+    const _wFeeFlat=workingData['__wFeeFlat']??isFlatFee, _wInsFlat=workingData['__wInsFlat']??isInsFlat;
+    const _wFee=_wFeeFlat?(workingData['__wFee']??fee):Math.round(workingFeeBase()*(workingData['__wFeePct']??feePct));
+    const _wIns=_wInsFlat?(workingData['__wIns']??ins):Math.round(_wTot*(workingData['__wInsPct']??insPct));
+    const _wGrand=_wTot+_wFee+_wIns;
+    document.getElementById('st-working').textContent=fmtK(_wGrand);
+    const _wSub=document.getElementById('st-working-sub');
+    if(_wSub)_wSub.textContent=fmtK(_wTot)+' +fee +ins';
+  }}
   const stAp=document.getElementById('st-actual-part');
-  if(stAp){ stAp.style.display=actualMode?'flex':'none'; if(actualMode)document.getElementById('st-actual').textContent=fmtK(actualTotal()); }
+  if(stAp){ stAp.style.display=actualMode?'flex':'none'; if(actualMode){
+    const _aTot=actualTotal();
+    const _aFeeFlat=actualData['__aFeeFlat']??isFlatFee, _aInsFlat=actualData['__aInsFlat']??isInsFlat;
+    const _aFee=_aFeeFlat?(actualData['__aFee']??fee):Math.round(actualFeeBase()*(actualData['__aFeePct']??feePct));
+    const _aIns=_aInsFlat?(actualData['__aIns']??ins):Math.round(_aTot*(actualData['__aInsPct']??insPct));
+    const _aGrand=_aTot+_aFee+_aIns;
+    document.getElementById('st-actual').textContent=fmtK(_aGrand);
+    const _aSub=document.getElementById('st-actual-sub');
+    if(_aSub)_aSub.textContent=fmtK(_aTot)+' +fee +ins';
+  }}
 
   // Working
   const wBox=document.getElementById('sum-working-rows');
