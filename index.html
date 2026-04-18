@@ -350,6 +350,50 @@ body.locked .del-sub { display: none; }
 let cats = [], dataLoaded = false, isDirty = false;
 let _undoHistory = [], _undoLastTs = 0;
 let currentProject = null, versionList = [], versionIndex = 0;
+
+// ── SESSION LOCK ──────────────────────────────────────────────────────────────
+const DEVICE_ID = localStorage.getItem('armada_device_id') || (()=>{
+  const id = Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+  localStorage.setItem('armada_device_id', id); return id;
+})();
+function getDeviceName() {
+  const ua = navigator.userAgent;
+  if (/iPad/.test(ua)) return 'iPad';
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/Android/.test(ua)) return 'Android';
+  if (/Macintosh/.test(ua)) return 'Mac';
+  if (/Windows/.test(ua)) return 'Windows';
+  return 'Desktop';
+}
+const LOCK_EXPIRY_MS = 5 * 60 * 1000;
+let lockHeartbeat = null;
+async function checkAndAcquireLock(projName) {
+  try {
+    const lock = await dbxDownload('/projects/'+projName+'/lock.json');
+    if (lock && lock.deviceId && lock.deviceId !== DEVICE_ID && lock.ts && (Date.now()-lock.ts) < LOCK_EXPIRY_MS) {
+      const age = Math.round((Date.now()-lock.ts)/1000);
+      const ageStr = age < 60 ? age+'s ago' : Math.round(age/60)+' min ago';
+      const ok = confirm('Project is open on '+lock.deviceName+' ('+ageStr+'). Open anyway? Changes may conflict.');
+      if (!ok) return false;
+    }
+  } catch(e) { /* ignore lock errors, don't block loading */ }
+  await writeLock(projName);
+  startLockHeartbeat(projName);
+  return true;
+}
+async function writeLock(projName) {
+  try { await dbxUpload('/projects/'+projName+'/lock.json', {deviceId:DEVICE_ID, deviceName:getDeviceName(), ts:Date.now()}); } catch(e) {}
+}
+async function releaseLock(projName) {
+  if (!projName) return;
+  try { await dbxUpload('/projects/'+projName+'/lock.json', {deviceId:DEVICE_ID, deviceName:getDeviceName(), ts:0}); } catch(e) {}
+}
+function startLockHeartbeat(projName) {
+  if (lockHeartbeat) clearInterval(lockHeartbeat);
+  lockHeartbeat = setInterval(()=>{ if(currentProject===projName) writeLock(projName); else clearInterval(lockHeartbeat); }, 2*60*1000);
+}
+window.addEventListener('beforeunload', ()=>{ if(currentProject) releaseLock(currentProject); });
+
 let autosaveLoaded = false, autosaveTime = null;
 let workingMode = false, workingData = {};
 let actualMode  = false, actualData  = {};
@@ -1155,15 +1199,24 @@ async function loadDefault() {
   if (urlMatch) {
     try { await loadProjectByName(decodeURIComponent(urlMatch[1])); return; } catch(e) {}
   }
-  // Fall back to last opened project from localStorage
+  // Fall back to last opened project — check localStorage first, then Dropbox settings
   const latestProj = localStorage.getItem('dbx_latest_project');
   if (latestProj) {
     try { await loadProjectByName(latestProj); return; } catch(e) {}
   }
+  // Try Dropbox settings (works across devices)
+  try {
+    const settings = await dbxDownload('/settings.json');
+    if (settings && settings.lastProject) {
+      try { await loadProjectByName(settings.lastProject); return; } catch(e) {}
+    }
+  } catch(e) {}
   setStatus('No project loaded — click Open');
 }
 
  async function loadProjectByName(projName) {
+  const lockOk = await checkAndAcquireLock(projName);
+  if (!lockOk) return;
   try {
     const entries = await dbxListFolder('/projects/'+projName);
     const files = entries
@@ -1196,6 +1249,7 @@ async function loadDefault() {
   } catch(e) { setStatus('load error'); alert('Error loading project:\n'+e.message); throw e; }
 }
 function setProjectState(projName) {
+  if (currentProject && currentProject !== projName) releaseLock(currentProject);
   currentProject = projName;
   document.getElementById('project-name').textContent = projName;
   // Sync URL
@@ -1242,7 +1296,8 @@ async function saveData(checkpoint=false) {
     } else {
       await dbxUpload('/projects/'+projName+'/autosave.json', payload);
     }
-    localStorage.setItem('dbx_latest_project', projName);
+    localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
+    dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     setProjectState(projName);
     if(checkpoint){
       setStatus('saved ✓ '+new Date().toLocaleTimeString('en-GB'));
@@ -1379,7 +1434,7 @@ async function saveAsProject() {
     const ts=new Date(), pad=n=>String(n).padStart(2,'0');
     const fname=`budget_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
     await dbxUpload('/projects/'+projName+'/'+fname, payload);
-    localStorage.setItem('dbx_latest_project', projName);
+    localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     applyData(payload); exitRatesMode(); setProjectState(projName); isDirty=false; versionIndex=0;
     await loadVersionList(projName); setStatus('saved as '+projName+' ✓');
   } catch(e) { alert('Error:\n'+e.message); }
@@ -1427,7 +1482,7 @@ async function newProjectFromRates() {
     const ts=new Date(), pad=n=>String(n).padStart(2,'0');
     const fname=`budget_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
     await dbxUpload('/projects/'+projName+'/'+fname, newData);
-    localStorage.setItem('dbx_latest_project', projName);
+    localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     applyData(newData); setProjectState(projName); setStatus('new project ✓'); versionIndex=0; isDirty=false; await loadVersionList(projName);
   } catch(e) { alert('Error:\n'+e.message); }
 }
@@ -1508,7 +1563,7 @@ async function importProject() {
         const ts=new Date(), pad=n=>String(n).padStart(2,'0');
         const fname=`budget_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
         await dbxUpload('/projects/'+projName+'/'+fname, {...data, header:{...data.header,...nameInput}});
-        localStorage.setItem('dbx_latest_project', projName);
+        localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
         applyData(data); exitRatesMode(); setProjectState(projName); isDirty=false;
         versionIndex=0; await loadVersionList(projName);
         setStatus('imported \u2713 '+projName);
