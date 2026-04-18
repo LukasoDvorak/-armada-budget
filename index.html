@@ -10,9 +10,11 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'DM Mono', 'Courier New', monospace; font-size: 12px; color: #1a1a1a; background: #f5f5f5; }
-.topbar { background: #0f0f0f; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
-.logo { color: #ff6b00; font-weight: 700; font-size: 18px; letter-spacing: 4px; }
-.subtitle { color: #555; font-size: 10px; letter-spacing: 2px; }
+.topbar { background: #0f0f0f; padding: 8px 16px; display: flex; align-items: center; gap: 10px; }
+.toolbar { background: #0f0f0f; border-top: 1px solid #1a1a1a; padding: 4px 16px; display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.toolbar::-webkit-scrollbar { display: none; }
+.logo { color: #ff6b00; font-weight: 700; font-size: 18px; letter-spacing: 4px; flex-shrink: 0; }
+.subtitle { color: #555; font-size: 10px; letter-spacing: 2px; flex: 1; }
 .tabs { display: flex; background: #fafafa; border-bottom: 1px solid #e0e0e0; padding: 0 12px; }
 .tab { padding: 9px 14px; cursor: pointer; font-size: 11px; font-weight: 700; letter-spacing: 1px; border: none; background: none; border-bottom: 2px solid transparent; color: #888; font-family: inherit; }
 .tab.active { border-bottom: 2px solid #0f0f0f; color: #0f0f0f; }
@@ -312,46 +314,46 @@ body.locked .del-sub { display: none; }
 <div id="zoom-wrapper">
 <div class="topbar">
   <span class="logo">ARMADA</span>
-  <button onclick="document.getElementById('help-overlay').style.display='flex'" title="User guide" style="background:none;border:1px solid #444;border-radius:50%;width:18px;height:18px;color:#666;font-size:10px;font-weight:700;cursor:pointer;padding:0;line-height:1;flex-shrink:0;margin-left:2px">?</button>
   <span class="subtitle">FILM PRODUCTION BUDGET · v27 · <span id="build-label"></span></span>
-  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-    <span id="save-status">loading…</span>
-    <button class="topbtn" id="btn-dbx" onclick="dbxToggle()" title="Connect to Dropbox">☁ Dropbox</button>
-    <span style="display:flex;align-items:center;gap:0;border:1px solid #444;border-radius:4px;overflow:hidden">
-      <button class="topbtn" onclick="appZoom(-1)" title="Zoom out" style="border:none;border-radius:0;padding:5px 8px">A−</button>
-      <span id="zoom-label" style="font-size:9px;color:#666;padding:0 5px;min-width:28px;text-align:center;cursor:pointer" onclick="appZoomReset()" title="Reset zoom">100%</span>
-      <button class="topbtn" onclick="appZoom(+1)" title="Zoom in"  style="border:none;border-radius:0;padding:5px 8px">A+</button>
-    </span>
-    <button class="topbtn" id="btn-fee"     onclick="toggleFeeMode()"  title="Show column for selecting rows included in production fee">💰 Fee</button>
-    <button class="topbtn" id="btn-working" onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported">🔧 Working</button>
-    <button class="topbtn" id="btn-actual"  onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer">📌 Actual</button>
-    <button class="topbtn" id="btn-overcost" onclick="toggleOvercost()" title="Overcost items above budget">⚠ Overcost</button>
-    <button class="topbtn" id="btn-lock"    onclick="toggleLock()"     title="Lock budget">🔒 Lock</button>
-    <button class="topbtn" id="btn-notes"   onclick="toggleNotesPanel()" title="Project notes">📝 Notes</button>
-    <!-- File dropdown -->
-    <div class="btn-drop" id="drop-file">
-      <button class="topbtn" onclick="toggleDrop('drop-file')">📁 File ▾</button>
-      <div class="btn-drop-menu" id="drop-file-menu" style="left:0">
-        <button onclick="closeDrop('drop-file');newProject()">✚ New</button>
-        <button onclick="closeDrop('drop-file');loadProject()">📂 Open</button>
-        <hr class="sep">
-        <button onclick="closeDrop('drop-file');editRates()">📋 Rates</button>
-        <hr class="sep">
-        <button id="btn-proj-export" onclick="closeDrop('drop-file');exportProject()">⬇ Export Project</button>
-        <button id="btn-proj-import" onclick="closeDrop('drop-file');importProject()">⬆ Import Project</button>
-        <hr class="sep" id="sep-rates-io" style="display:none">
-        <button id="btn-rates-export" onclick="closeDrop('drop-file');exportRates()" style="display:none">⬇ Export Rates</button>
-        <button id="btn-rates-import" onclick="closeDrop('drop-file');importRates()" style="display:none">⬆ Import Rates</button>
-      </div>
+  <button onclick="document.getElementById('help-overlay').style.display='flex'" title="User guide" style="background:none;border:1px solid #444;border-radius:50%;width:20px;height:20px;color:#555;font-size:11px;font-weight:700;cursor:pointer;padding:0;line-height:1;flex-shrink:0">?</button>
+</div>
+<div class="toolbar">
+  <span id="save-status" style="flex-shrink:0">loading…</span>
+  <button class="topbtn" id="btn-dbx" onclick="dbxToggle()" title="Connect to Dropbox" style="flex-shrink:0">☁ Dropbox</button>
+  <span style="display:flex;align-items:center;gap:0;border:1px solid #444;border-radius:4px;overflow:hidden;flex-shrink:0">
+    <button class="topbtn" onclick="appZoom(-1)" title="Zoom out" style="border:none;border-radius:0;padding:5px 8px">A−</button>
+    <span id="zoom-label" style="font-size:9px;color:#666;padding:0 5px;min-width:28px;text-align:center;cursor:pointer" onclick="appZoomReset()" title="Reset zoom">100%</span>
+    <button class="topbtn" onclick="appZoom(+1)" title="Zoom in"  style="border:none;border-radius:0;padding:5px 8px">A+</button>
+  </span>
+  <button class="topbtn" id="btn-fee"      onclick="toggleFeeMode()"  title="Show column for selecting rows included in production fee" style="flex-shrink:0">💰 Fee</button>
+  <button class="topbtn" id="btn-working"  onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported" style="flex-shrink:0">🔧 Working</button>
+  <button class="topbtn" id="btn-actual"   onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer" style="flex-shrink:0">📌 Actual</button>
+  <button class="topbtn" id="btn-overcost" onclick="toggleOvercost()" title="Overcost items above budget" style="flex-shrink:0">⚠ Overcost</button>
+  <button class="topbtn" id="btn-lock"     onclick="toggleLock()"     title="Lock budget" style="flex-shrink:0">🔒 Lock</button>
+  <button class="topbtn" id="btn-notes"    onclick="toggleNotesPanel()" title="Project notes" style="flex-shrink:0">📝 Notes</button>
+  <!-- File dropdown -->
+  <div class="btn-drop" id="drop-file" style="flex-shrink:0">
+    <button class="topbtn" onclick="toggleDrop('drop-file')">📁 File ▾</button>
+    <div class="btn-drop-menu" id="drop-file-menu" style="left:0">
+      <button onclick="closeDrop('drop-file');newProject()">✚ New</button>
+      <button onclick="closeDrop('drop-file');loadProject()">📂 Open</button>
+      <hr class="sep">
+      <button onclick="closeDrop('drop-file');editRates()">📋 Rates</button>
+      <hr class="sep">
+      <button id="btn-proj-export" onclick="closeDrop('drop-file');exportProject()">⬇ Export Project</button>
+      <button id="btn-proj-import" onclick="closeDrop('drop-file');importProject()">⬆ Import Project</button>
+      <hr class="sep" id="sep-rates-io" style="display:none">
+      <button id="btn-rates-export" onclick="closeDrop('drop-file');exportRates()" style="display:none">⬇ Export Rates</button>
+      <button id="btn-rates-import" onclick="closeDrop('drop-file');importRates()" style="display:none">⬆ Import Rates</button>
     </div>
-    <!-- Save dropdown -->
-    <div class="btn-drop" id="drop-save">
-      <button class="topbtn topbtn-orange" id="btn-save" onclick="saveData(true)">💾 Save ▾</button>
-      <div class="btn-drop-menu" id="drop-save-menu" style="left:auto;right:0">
-        <button onclick="closeDrop('drop-save');saveData(true)">💾 Save</button>
-        <button onclick="closeDrop('drop-save');saveAsProject()">⎘ Save As</button>
-        <button onclick="closeDrop('drop-save');addVersion()">⊕ New Version</button>
-      </div>
+  </div>
+  <!-- Save dropdown -->
+  <div class="btn-drop" id="drop-save" style="flex-shrink:0">
+    <button class="topbtn topbtn-orange" id="btn-save" onclick="saveData(true)">💾 Save ▾</button>
+    <div class="btn-drop-menu" id="drop-save-menu" style="left:auto;right:0">
+      <button onclick="closeDrop('drop-save');saveData(true)">💾 Save</button>
+      <button onclick="closeDrop('drop-save');saveAsProject()">⎘ Save As</button>
+      <button onclick="closeDrop('drop-save');addVersion()">⊕ New Version</button>
     </div>
   </div>
 </div>
@@ -1730,7 +1732,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 16;
+const APP_BUILD = 17;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
