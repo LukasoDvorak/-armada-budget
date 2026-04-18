@@ -407,7 +407,7 @@ function getDeviceName() {
   if (/Windows/.test(ua)) return 'Windows';
   return 'Desktop';
 }
-const LOCK_EXPIRY_MS = 2 * 60 * 1000;
+const LOCK_EXPIRY_MS = 1 * 60 * 1000;
 let lockHeartbeat = null;
 async function checkAndAcquireLock(projName) {
   try {
@@ -1634,7 +1634,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 5;
+const APP_BUILD = 6;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3104,7 +3104,7 @@ const _orig=saveData;
 if ('ontouchstart' in window) {
   const bar = document.createElement('div');
   bar.id = 'kbd-nav';
-  bar.innerHTML = '<button ontouchend="event.preventDefault();kbdNav(-1)">&#9650;</button><span class="kbd-nav-label">NAVIGATE</span><button ontouchend="event.preventDefault();kbdNav(1)">&#9660;</button>';
+  bar.innerHTML = '<button ontouchend="event.preventDefault();kbdNav(-1)">&#9650;</button><button ontouchend="event.preventDefault();kbdNavH(-1)">&#9664;</button><span class="kbd-nav-label">NAVIGATE</span><button ontouchend="event.preventDefault();kbdNavH(1)">&#9654;</button><button ontouchend="event.preventDefault();kbdNav(1)">&#9660;</button>';
   document.body.appendChild(bar);
 
   function getInputs() {
@@ -3115,6 +3115,29 @@ if ('ontouchstart' in window) {
   }
 
   window.kbdNav = function(dir) {
+    const inputs = getInputs();
+    const idx = inputs.indexOf(document.activeElement);
+    if (idx === -1) return;
+    // Try to find same column in next/prev row
+    const cur = document.activeElement;
+    const curRow = cur.closest('tr');
+    if (curRow) {
+      const curCells = [...curRow.querySelectorAll('td')];
+      const curCellIdx = curCells.findIndex(td => td.contains(cur));
+      const targetRow = dir === 1 ? curRow.nextElementSibling : curRow.previousElementSibling;
+      if (targetRow) {
+        const targetCell = targetRow.querySelectorAll('td')[curCellIdx];
+        if (targetCell) {
+          const inp = targetCell.querySelector('input');
+          if (inp && !inp.disabled && !inp.readOnly) { inp.focus(); inp.select(); return; }
+        }
+      }
+    }
+    // Fallback: sequential
+    const next = inputs[idx + dir];
+    if (next) { next.focus(); next.select(); }
+  };
+  window.kbdNavH = function(dir) {
     const inputs = getInputs();
     const idx = inputs.indexOf(document.activeElement);
     if (idx === -1) return;
