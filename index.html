@@ -1211,15 +1211,7 @@ async function loadProject() {
     if (!projects.length) { alert('No saved projects found.'); return; }
     let project = projects.length===1 ? projects[0] : await pickFromList('SELECT PROJECT', projects, p=>p);
     if (!project) return;
-    const files = await dbxListProjectFiles(project);
-    if (!files.length) { alert('No files.'); return; }
-    const file = await pickFromList('SELECT VERSION — '+project, files, formatFilename);
-    if (!file) return;
-    const data = await dbxDownload('/projects/'+project+'/'+file);
-    if (!data) throw new Error('File not found');
-    applyData(data); exitRatesMode();
-    setProjectState(project); setStatus('loaded ✓ '+formatFilename(file));
-    versionIndex=0; versionList=files; renderVersionNav();
+    await loadProjectByName(project);
   } catch(e) { setStatus('load error'); alert('Error:\n'+e.message); }
 }
 
