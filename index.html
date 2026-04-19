@@ -482,7 +482,7 @@ body.locked .del-sub { display: none; }
 // ── STATE ────────────────────────────────────────────────────────────────────
 let cats = [], dataLoaded = false, isDirty = false;
 let _undoHistory = [], _undoLastTs = 0;
-let currentProject = null, versionList = [], versionIndex = 0, currentVersionFile = null;
+let currentProject = null, versionList = [], versionIndex = 0, currentVersionFile = null, currentSnapshots = [];
 
 // ── SESSION LOCK ──────────────────────────────────────────────────────────────
 // Per-tab session ID (unique per tab, even on same device)
@@ -1170,9 +1170,9 @@ async function addVersion() {
   const hdr = gatherHeader();
   const payload = { header:hdr, settings:gatherSettings(), cats, workingData, actualData, feeExclusions, invoiceChecked, overcostRows, rowNotes, projectNotes:getProjectNotes() };
   try {
+    currentSnapshots = [];
     const vp = { ...payload, _version:`v${maxN+1}`, _savedAt:new Date().toISOString(), _snapshots:[] };
     await dbxUpload('/projects/'+projName+'/'+newFile, vp);
-    await dbxUpload('/projects/'+projName+'/autosave.json', payload);
     currentVersionFile = newFile;
     isDirty=false; autosaveLoaded=false; versionIndex=0;
     await loadVersionList(projName);
@@ -1396,28 +1396,45 @@ async function loadDefault() {
     const entries = await dbxListFolder('/projects/'+projName);
     const files = await dbxListProjectFiles(projName);
     currentVersionFile = files.filter(f=>/_v\d+\.json$/.test(f))[0] || null;
-    const hasAutosave = entries.some(e=>e['.tag']==='file'&&e.name==='autosave.json');
-    if (!hasAutosave && !files.length) throw new Error('No files in '+projName);
-    if (hasAutosave) {
-      const asData = await dbxDownload('/projects/'+projName+'/autosave.json');
-      if (asData) {
-        applyData(asData); exitRatesMode();
-        setProjectState(projName);
-        setStatus('loaded ✓ autosave');
-        autosaveLoaded=true; autosaveTime=new Date();
-        versionIndex=0; versionList=files; renderVersionNav();
-        return;
+    const vFiles = files.filter(f=>/_v\d+\.json$/.test(f));
+    if (vFiles.length) {
+      // New format: load from latest vN.json
+      const raw = await dbxDownload('/projects/'+projName+'/'+vFiles[0]);
+      if (!raw) throw new Error('File not found');
+      const {_snapshots, _version, _savedAt, ...data} = raw;
+      currentSnapshots = _snapshots || [];
+      applyData(data); exitRatesMode();
+      setProjectState(projName);
+      autosaveLoaded=false;
+      setStatus('loaded ✓ '+formatFilename(vFiles[0]));
+      versionIndex=0; versionList=files; renderVersionNav();
+    } else {
+      // Old format fallback: prefer autosave.json, then budget_*.json
+      const hasAutosave = entries.some(e=>e['.tag']==='file'&&e.name==='autosave.json');
+      if (!hasAutosave && !files.length) throw new Error('No files in '+projName);
+      if (hasAutosave) {
+        const asData = await dbxDownload('/projects/'+projName+'/autosave.json');
+        if (asData) {
+          currentSnapshots = [];
+          applyData(asData); exitRatesMode();
+          setProjectState(projName);
+          setStatus('loaded ✓ autosave');
+          autosaveLoaded=true; autosaveTime=new Date();
+          versionIndex=0; versionList=files; renderVersionNav();
+          return;
+        }
       }
+      if (!files.length) throw new Error('No files in '+projName);
+      const raw = await dbxDownload('/projects/'+projName+'/'+files[0]);
+      if (!raw) throw new Error('File not found');
+      currentSnapshots = [];
+      const {_snapshots, _version, _savedAt, ...data} = raw;
+      applyData(data); exitRatesMode();
+      setProjectState(projName);
+      autosaveLoaded=false;
+      setStatus('loaded ✓ '+formatFilename(files[0]));
+      versionIndex=0; versionList=files; renderVersionNav();
     }
-    if (!files.length) throw new Error('No files in '+projName);
-    const raw = await dbxDownload('/projects/'+projName+'/'+files[0]);
-    if (!raw) throw new Error('File not found');
-    const {_snapshots, _version, _savedAt, ...data} = raw;
-    applyData(data); exitRatesMode();
-    setProjectState(projName);
-    autosaveLoaded=false;
-    setStatus('loaded ✓ '+formatFilename(files[0]));
-    versionIndex=0; versionList=files; renderVersionNav();
   } catch(e) { setStatus('load error'); alert('Error loading project:\n'+e.message); throw e; }
 }
 function setProjectState(projName) {
@@ -1464,19 +1481,15 @@ async function saveData(checkpoint=false) {
   const btn = document.getElementById('btn-save');
   if(checkpoint){ btn.classList.add('saving'); btn.textContent='💾 Saving…'; }
   try {
+    if (!currentVersionFile) currentVersionFile = projName+'_v1.json';
     if (checkpoint) {
-      if (!currentVersionFile) currentVersionFile = projName+'_v1.json';
-      let existing = null;
-      try { existing = await dbxDownload('/projects/'+projName+'/'+currentVersionFile); } catch(e) {}
-      const snapshots = (existing && existing._snapshots) ? existing._snapshots : [];
-      snapshots.push({ time: new Date().toISOString(), data: payload });
-      if (snapshots.length > 20) snapshots.splice(0, snapshots.length - 20);
-      const vp = { ...payload, _version:currentVersionFile.replace('.json',''), _savedAt:new Date().toISOString(), _snapshots:snapshots };
-      await dbxUpload('/projects/'+projName+'/'+currentVersionFile, vp);
-      await dbxUpload('/projects/'+projName+'/autosave.json', payload);
-    } else {
-      await dbxUpload('/projects/'+projName+'/autosave.json', payload);
+      // Add snapshot to in-memory array (no read needed)
+      currentSnapshots.push({ time: new Date().toISOString(), data: payload });
+      if (currentSnapshots.length > 20) currentSnapshots.splice(0, currentSnapshots.length - 20);
     }
+    // Single write — autosave updates top-level data, checkpoint also grows _snapshots
+    const vp = { ...payload, _version:currentVersionFile.replace(/_v(\d+)\.json$/,'v$1'), _savedAt:new Date().toISOString(), _snapshots:currentSnapshots };
+    await dbxUpload('/projects/'+projName+'/'+currentVersionFile, vp);
     localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     setProjectState(projName);
     if(checkpoint){
@@ -1535,24 +1548,7 @@ function renderVersionNav() {
   nav.style.display='flex';
   const total=versionList.length;
   chips.innerHTML='';
-  if (autosaveLoaded && autosaveTime) {
-    const hh=String(autosaveTime.getHours()).padStart(2,'0'),mm=String(autosaveTime.getMinutes()).padStart(2,'0'),ss=String(autosaveTime.getSeconds()).padStart(2,'0');
-    const aChip=document.createElement('span');
-    aChip.className='ver-chip autosave active';
-    aChip.textContent='⚡ autosave '+hh+':'+mm+':'+ss;
-    aChip.title='Currently loaded from autosave (newest)';
-    chips.appendChild(aChip);
-    for(let i=0;i<Math.min(2,total);i++){
-      chips.appendChild(Object.assign(document.createElement('span'),{textContent:' '}));
-      const chip=document.createElement('span');
-      chip.className='ver-chip';
-      chip.textContent=formatFilename(versionList[i]); chip.title=versionList[i];
-      const idx=i; chip.onclick=()=>loadVersionByIndex(idx);
-      chips.appendChild(chip);
-    }
-    prev.disabled=(total===0); next.disabled=true;
-    return;
-  }
+  // autosave chip removed — autosave now writes directly to vN.json
   let start=Math.max(0,versionIndex-1), end=Math.min(total,start+3);
   if(end-start<3) start=Math.max(0,end-3);
   for(let i=start;i<end;i++){
@@ -1572,6 +1568,7 @@ async function loadVersionByIndex(idx) {
     const raw=await dbxDownload('/projects/'+currentProject+'/'+file);
     if(!raw) throw new Error('File not found');
     const {_snapshots, _version, _savedAt, ...data} = raw;
+    currentSnapshots = _snapshots || [];
     applyData(data);
     autosaveLoaded=false; versionIndex=idx; setStatus('loaded ✓ '+formatFilename(file)); renderVersionNav(); isDirty=false;
   } catch(e) { alert('Load error:\n'+e.message); }
@@ -1613,8 +1610,8 @@ async function saveAsProject() {
   try {
     if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
     const vp = { ...payload, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
+    currentSnapshots = [];
     await dbxUpload('/projects/'+projName+'/'+projName+'_v1.json', vp);
-    await dbxUpload('/projects/'+projName+'/autosave.json', payload);
     localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     currentVersionFile = projName+'_v1.json';
     applyData(payload); exitRatesMode(); setProjectState(projName); isDirty=false; versionIndex=0;
@@ -1662,8 +1659,8 @@ async function newProjectFromRates() {
   };
   try {
     const vp = { ...newData, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
+    currentSnapshots = [];
     await dbxUpload('/projects/'+projName+'/'+projName+'_v1.json', vp);
-    await dbxUpload('/projects/'+projName+'/autosave.json', newData);
     localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     currentVersionFile = projName+'_v1.json';
     applyData(newData); setProjectState(projName); setStatus('new project ✓'); versionIndex=0; isDirty=false; await loadVersionList(projName);
@@ -1746,8 +1743,8 @@ async function importProject() {
         const cleanData = {...data, header:{...data.header,...nameInput}};
         delete cleanData._snapshots; delete cleanData._version; delete cleanData._savedAt;
         const vp = { ...cleanData, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
+        currentSnapshots = [];
         await dbxUpload('/projects/'+projName+'/'+projName+'_v1.json', vp);
-        await dbxUpload('/projects/'+projName+'/autosave.json', cleanData);
         localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
         currentVersionFile = projName+'_v1.json';
         applyData(cleanData); exitRatesMode(); setProjectState(projName); isDirty=false;
@@ -1764,7 +1761,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 20;
+const APP_BUILD = 21;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
