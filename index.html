@@ -385,6 +385,7 @@ body.locked .del-sub { display: none; }
 <div id="panel-header" class="panel">
   <div class="hdr-box">
     <div class="hdr-grid">
+      <div class="fld"><label>Project</label><input id="h_project"></div>
       <div class="fld"><label>Client</label><input id="h_client"></div>
       <div class="fld"><label>Agency</label><input id="h_agency"></div>
       <div class="fld"><label>Agency Producer</label><input id="h_agprod"></div>
@@ -1483,7 +1484,7 @@ async function saveData(checkpoint=false) {
   if (!dataLoaded) { alert('No data loaded.'); return; }
   if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
   const hdr = gatherHeader();
-  const projName = currentProject || sanitize(hdr.client+'_'+hdr.agency) || 'untitled';
+  const projName = currentProject || sanitize((hdr.client||'')+'_'+(hdr.project||'')) || sanitize(hdr.client) || 'untitled';
   const payload = { header:hdr, settings:gatherSettings(), cats, workingData, actualData, feeExclusions, invoiceChecked, overcostRows, rowNotes, projectNotes:getProjectNotes() };
   const btn = document.getElementById('btn-save');
   if(checkpoint){ btn.classList.add('saving'); btn.textContent='💾 Saving…'; }
@@ -1628,13 +1629,15 @@ async function loadVersionByIndex(idx) {
 // ── NEW PROJECT / SAVE AS ─────────────────────────────────────────────────────
 async function newProject() { await newProjectFromRates(); }
 
-function showNewProjectDialog(title='NEW PROJECT', defClient='', defAgency='') {
+function showNewProjectDialog(title='NEW PROJECT', defClient='', defAgency='', defProject='') {
   return new Promise(resolve => {
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;display:flex;align-items:center;justify-content:center;';
     const box=document.createElement('div');
     box.style.cssText='background:#111;border:1px solid #333;border-radius:8px;padding:24px;min-width:320px;font-family:inherit;';
     box.innerHTML=`<div style="color:#ff6b00;font-weight:700;letter-spacing:2px;font-size:11px;margin-bottom:18px">${title}</div>
+      <div style="margin-bottom:12px"><label style="display:block;color:#666;font-size:9px;letter-spacing:1.5px;margin-bottom:4px">PROJECT</label>
+      <input id="np-project" type="text" style="width:100%;padding:7px 9px;background:#1a1a1a;border:1px solid #333;border-radius:4px;color:#eee;font-family:inherit;font-size:12px;"></div>
       <div style="margin-bottom:12px"><label style="display:block;color:#666;font-size:9px;letter-spacing:1.5px;margin-bottom:4px">CLIENT</label>
       <input id="np-client" type="text" style="width:100%;padding:7px 9px;background:#1a1a1a;border:1px solid #333;border-radius:4px;color:#eee;font-family:inherit;font-size:12px;"></div>
       <div style="margin-bottom:20px"><label style="display:block;color:#666;font-size:9px;letter-spacing:1.5px;margin-bottom:4px">AGENCY</label>
@@ -1644,9 +1647,9 @@ function showNewProjectDialog(title='NEW PROJECT', defClient='', defAgency='') {
         <button id="np-cancel" style="flex:1;padding:9px;background:transparent;border:1px solid #333;border-radius:4px;color:#555;font-family:inherit;font-size:11px;cursor:pointer;">Cancel</button>
       </div>`;
     ov.appendChild(box); document.body.appendChild(ov);
-    const cl=box.querySelector('#np-client'), ag=box.querySelector('#np-agency');
-    cl.value=defClient; ag.value=defAgency; cl.focus(); cl.select();
-    const submit=()=>{ const c=cl.value.trim(),a=ag.value.trim(); if(!c&&!a){cl.focus();return;} document.body.removeChild(ov); resolve({client:c||'Client',agency:a||'Agency'}); };
+    const pr=box.querySelector('#np-project'), cl=box.querySelector('#np-client'), ag=box.querySelector('#np-agency');
+    pr.value=defProject; cl.value=defClient; ag.value=defAgency; pr.focus(); pr.select();
+    const submit=()=>{ const p=pr.value.trim(),c=cl.value.trim(),a=ag.value.trim(); if(!p&&!c){pr.focus();return;} document.body.removeChild(ov); resolve({project:p||'Project',client:c||'Client',agency:a}); };
     box.querySelector('#np-ok').onclick=submit;
     box.querySelector('#np-cancel').onclick=()=>{document.body.removeChild(ov);resolve(null);};
     box.querySelectorAll('input').forEach(inp=>inp.addEventListener('keydown',e=>{if(e.key==='Enter')submit();if(e.key==='Escape'){document.body.removeChild(ov);resolve(null);}}));
@@ -1655,8 +1658,8 @@ function showNewProjectDialog(title='NEW PROJECT', defClient='', defAgency='') {
 
 async function saveAsProject() {
   if(!dataLoaded){alert('No data loaded.');return;}
-  const h=gatherHeader(), input=await showNewProjectDialog('SAVE AS',h.client,h.agency); if(!input) return;
-  const projName=sanitize(input.client+'_'+input.agency)||'untitled';
+  const h=gatherHeader(), input=await showNewProjectDialog('SAVE AS',h.client,h.agency,h.project); if(!input) return;
+  const projName=sanitize((input.client||'')+'_'+(input.project||''))||sanitize(input.client)||'untitled';
   const payload={header:{...h,...input},settings:gatherSettings(),cats,workingData,actualData,feeExclusions,invoiceChecked,overcostRows,rowNotes,projectNotes:getProjectNotes()};
   try {
     if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
@@ -1696,7 +1699,7 @@ async function editRates() {
 
 async function newProjectFromRates() {
   const input = await showNewProjectDialog(); if(!input) return;
-  const projName = sanitize(input.client+'_'+input.agency)||'untitled';
+  const projName = sanitize((input.client||'')+'_'+(input.project||''))||sanitize(input.client)||'untitled';
   if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
   let ratesData;
   try {
@@ -1788,9 +1791,9 @@ async function importProject() {
       try {
         const data = JSON.parse(ev.target.result);
         if (!data.cats) { alert('Invalid project file.'); return; }
-        const nameInput = await showNewProjectDialog('IMPORT PROJECT', data.header?.client||'', data.header?.agency||'');
+        const nameInput = await showNewProjectDialog('IMPORT PROJECT', data.header?.client||'', data.header?.agency||'', data.header?.project||'');
         if (!nameInput) return;
-        const projName = sanitize((nameInput.client||'')+'_'+(nameInput.agency||''))||'untitled';
+        const projName = sanitize((nameInput.client||'')+'_'+(nameInput.project||''))||sanitize(nameInput.client)||'untitled';
         const cleanData = {...data, header:{...data.header,...nameInput}};
         delete cleanData._snapshots; delete cleanData._version; delete cleanData._savedAt;
         const vp = { ...cleanData, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
@@ -1813,7 +1816,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 4;
+const APP_BUILD = 5;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -1984,7 +1987,7 @@ function applyData(data) {
 function loadHeader(h) {
   if(!h) return;
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
-  set('h_client',h.client);set('h_agency',h.agency);set('h_agprod',h.agencyProducer);
+  set('h_project',h.project);set('h_client',h.client);set('h_agency',h.agency);set('h_agprod',h.agencyProducer);
   set('h_dir',h.director);set('h_dop',h.dop);set('h_ep',h.executiveProducer);
   set('h_pc',h.productionContact);set('h_date',h.date);set('h_ver',h.version);
   set('h_shoot',h.shootDays);set('h_studio',h.studioDays);
@@ -2013,7 +2016,7 @@ function loadSettings(s) {
 }
 function gatherHeader() {
   const g=id=>(document.getElementById(id)||{value:''}).value;
-  return {client:g('h_client'),agency:g('h_agency'),agencyProducer:g('h_agprod'),director:g('h_dir'),dop:g('h_dop'),executiveProducer:g('h_ep'),productionContact:g('h_pc'),date:g('h_date'),version:g('h_ver'),shootDays:g('h_shoot'),studioDays:g('h_studio'),deliverables:g('h_deliv'),buyout:g('h_buyout'),notes:g('h_notes')};
+  return {project:g('h_project'),client:g('h_client'),agency:g('h_agency'),agencyProducer:g('h_agprod'),director:g('h_dir'),dop:g('h_dop'),executiveProducer:g('h_ep'),productionContact:g('h_pc'),date:g('h_date'),version:g('h_ver'),shootDays:g('h_shoot'),studioDays:g('h_studio'),deliverables:g('h_deliv'),buyout:g('h_buyout'),notes:g('h_notes')};
 }
 function gatherSettings() {
   const g=id=>(document.getElementById(id)||{value:''}).value;
