@@ -1816,7 +1816,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 7;
+const APP_BUILD = 8;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2181,8 +2181,8 @@ function extraEmpty(){
 function renderCrewSec(cat, si, sec, counter) {
   const isOT=sec.name==='Overtimes', isTr=sec.name==='Transport';
   let html=`<div class="cat-toolbar">
-    <span style="font-size:9px;font-weight:700;letter-spacing:1px;color:#888;flex:1">${sec.name||'CREW'}</span>
     <button class="tbtn" onclick="addCrewRow('${cat.code}',${si})">+ Add</button>
+    <span style="font-size:9px;font-weight:700;letter-spacing:1px;color:#888;flex:1">${sec.name||'CREW'}</span>
     <span class="ctx-hint">right-click to delete</span>
   </div>`;
 
@@ -2335,7 +2335,7 @@ function renderCats() {
       cat.sections.forEach((sec,si)=>{ html+=renderCrewSec(cat,si,sec,counter); });
 
     } else if(cat.type==='transport'){
-      html+=`<div class="cat-toolbar"><span style="font-size:9px;font-weight:700;letter-spacing:1px;color:#888;flex:1">VEHICLES</span><button class="tbtn" onclick="cats.find(c=>c.code==='${cat.code}').vans.push({name:'New Vehicle',subs:[['Day Rate',1,0],['Mileage',0,17],['Overtime',0,400]]});renderCats();isDirty=true;">+ Add</button><span class="ctx-hint">right-click to delete</span></div>`;
+      html+=`<div class="cat-toolbar"><button class="tbtn" onclick="cats.find(c=>c.code==='${cat.code}').vans.push({name:'New Vehicle',subs:[['Day Rate',1,0],['Mileage',0,17],['Overtime',0,400]]});renderCats();isDirty=true;">+ Add</button><span style="font-size:9px;font-weight:700;letter-spacing:1px;color:#888;flex:1">VEHICLES</span><span class="ctx-hint">right-click to delete</span></div>`;
       html+=`<table><thead><tr><th style="width:24px"></th><th class="thl" style="width:160px">Vehicle</th><th style="width:55px">Qty</th><th style="width:88px">Rate</th><th style="width:100px">Total</th>${extraHeaders()}</tr></thead><tbody>`;
       let tCnt=0;
       cat.vans.forEach((van,vi)=>{
@@ -2362,9 +2362,13 @@ function renderCats() {
 
     } else if(cat.type==='talent'){
       const talentCnt={n:0};
+      const _itemSi=cat.sections.findIndex(s=>!s.rows.some(r=>r.subs));
+      const _subsSi=cat.sections.findIndex(s=>s.rows.some(r=>r.subs));
+      const _iSi=_itemSi>=0?_itemSi:0;
+      const _sSi=_subsSi>=0?_subsSi:cat.sections.length-1;
+      html+=`<div class="cat-toolbar"><button class="tbtn" onclick="addTalentItem('${cat.code}',${_iSi})">+ Add Item</button><button class="tbtn" style="margin-left:4px" onclick="addTalentSubs('${cat.code}',${_sSi})">+ Add Talent</button><span class="ctx-hint">right-click for options</span></div>`;
       cat.sections.forEach((sec,si)=>{
         html+=`<div class="sec-hdr">${sec.name}</div>`;
-        html+=`<div class="cat-toolbar"><button class="tbtn" onclick="addTalentItem('${cat.code}',${si})">+ Add Item</button><button class="tbtn" style="margin-left:4px" onclick="addTalentSubs('${cat.code}',${si})">+ Add Talent</button><span class="ctx-hint">right-click for options</span></div>`;
         html+=`<table><thead><tr><th style="width:24px"></th><th class="thl" style="width:160px">Name</th><th style="width:55px">Qty</th><th style="width:88px">Rate</th><th style="width:100px">Total</th>${extraHeaders()}</tr></thead><tbody>`;
         sec.rows.forEach((row,ri)=>{
           const wk=crewKey(cat.code,si,ri);
