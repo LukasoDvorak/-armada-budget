@@ -1816,7 +1816,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 8;
+const APP_BUILD = 9;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2062,7 +2062,7 @@ function startInlineEdit(el, isNum, cur, onSave) {
   if(el.querySelector('input')) return;
   el.innerHTML=`<input type="${isNum?'number':'text'}" class="${isNum?'cell-num':'cell-text'}" value="${cur}" style="width:${isNum?'70px':'140px'}">`;
   const inp=el.querySelector('input'); inp.focus(); inp.select();
-  const save=()=>{const v=isNum?(parseFloat(inp.value)||0):inp.value;onSave(v);};
+  const save=()=>{const v=isNum?(parseFloat(inp.value)||0):inp.value;el.innerHTML=String(v);onSave(v);};
   inp.onblur=save; inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')el.innerHTML=cur;};
 }
 
