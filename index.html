@@ -123,6 +123,10 @@ tr.selected td { background: #fff3e6 !important; }
 .ver-chip:hover { border-color: #444; color: #aaa; }
 .ver-chip.active { border-color: #ff6b00; color: #ff6b00; background: #1e1000; }
 .ver-chip.autosave { border-color: #00aa44; color: #00aa44; background: #001a0a; }
+.snap-nav { display: flex; align-items: center; gap: 4px; width: 100%; padding: 3px 0 0 0; border-top: 1px solid #222; margin-top: 2px; }
+.snap-label { font-size: 9px; color: #888; white-space: nowrap; letter-spacing: 0.3px; min-width: 160px; }
+.snap-tag { font-size: 8px; letter-spacing: 1px; color: #555; }
+.snap-browsing { color: #ff6b00 !important; font-style: italic; }
 .btn-finder { background: none; border: 1px solid #2a2a2a; border-radius: 3px; color: #555; font-size: 10px; padding: 3px 8px; cursor: pointer; font-family: inherit; }
 .btn-finder:hover { border-color: #555; color: #aaa; }
 /* Extra columns */
@@ -367,6 +371,13 @@ body.locked .del-sub { display: none; }
     <span id="ver-chips"></span>
     <button class="ver-arrow" id="ver-next" onclick="navVersion(1)">▶</button>
   </div>
+  <div class="snap-nav" id="snap-nav" style="display:none">
+    <span class="snap-tag">SNAP</span>
+    <button class="ver-arrow" id="snap-prev" onclick="navSnapshot(-1)">◀</button>
+    <span class="snap-label" id="snap-label"></span>
+    <button class="ver-arrow" id="snap-next" onclick="navSnapshot(1)">▶</button>
+    <button class="ver-arrow" onclick="closeSnapshotNav()" title="Back to current" style="color:#555;margin-left:4px">✕</button>
+  </div>
 </div>
 
 <div class="tabs">
@@ -482,7 +493,7 @@ body.locked .del-sub { display: none; }
 // ── STATE ────────────────────────────────────────────────────────────────────
 let cats = [], dataLoaded = false, isDirty = false;
 let _undoHistory = [], _undoLastTs = 0;
-let currentProject = null, versionList = [], versionIndex = 0, currentVersionFile = null, currentSnapshots = [];
+let currentProject = null, versionList = [], versionIndex = 0, currentVersionFile = null, currentSnapshots = [], snapshotIndex = -1;
 
 // ── SESSION LOCK ──────────────────────────────────────────────────────────────
 // Per-tab session ID (unique per tab, even on same device)
@@ -1553,13 +1564,55 @@ function renderVersionNav() {
   if(end-start<3) start=Math.max(0,end-3);
   for(let i=start;i<end;i++){
     const chip=document.createElement('span');
-    chip.className='ver-chip'+(i===versionIndex?' active':'');
-    chip.textContent=formatFilename(versionList[i]); chip.title=versionList[i];
-    const idx=i; chip.onclick=()=>loadVersionByIndex(idx);
+    const isActive = i===versionIndex;
+    chip.className='ver-chip'+(isActive?' active':'');
+    chip.textContent=formatFilename(versionList[i]); chip.title=isActive&&currentSnapshots.length?'Click to browse snapshots':versionList[i];
+    const idx=i; chip.onclick=()=>{ if(isActive&&currentSnapshots.length) toggleSnapshotNav(); else { closeSnapshotNav(false); loadVersionByIndex(idx); } };
     chips.appendChild(chip);
     if(i<end-1) chips.appendChild(Object.assign(document.createElement('span'),{textContent:' '}));
   }
   prev.disabled=(versionIndex>=total-1); next.disabled=(versionIndex<=0);
+}
+function toggleSnapshotNav() {
+  if (document.getElementById('snap-nav').style.display !== 'none') { closeSnapshotNav(true); return; }
+  openSnapshotNav();
+}
+function openSnapshotNav() {
+  if (!currentSnapshots.length) { setStatus('no snapshots yet — use 💾 Save'); return; }
+  snapshotIndex = currentSnapshots.length - 1; // start at newest
+  document.getElementById('snap-nav').style.display = 'flex';
+  renderSnapshotNav();
+  applySnapshotData(snapshotIndex);
+}
+function closeSnapshotNav(restore=true) {
+  snapshotIndex = -1;
+  document.getElementById('snap-nav').style.display = 'none';
+  document.getElementById('snap-label').textContent = '';
+  if (restore) loadVersionByIndex(versionIndex); // restore current version state
+}
+function navSnapshot(dir) {
+  const n = snapshotIndex + dir;
+  if (n >= 0 && n < currentSnapshots.length) {
+    snapshotIndex = n;
+    renderSnapshotNav();
+    applySnapshotData(n);
+  }
+}
+function applySnapshotData(idx) {
+  const snap = currentSnapshots[idx];
+  if (!snap || !snap.data) return;
+  applyData(snap.data);
+  isDirty = false;
+}
+function renderSnapshotNav() {
+  const total = currentSnapshots.length;
+  const snap = currentSnapshots[snapshotIndex];
+  const d = snap ? new Date(snap.time) : null;
+  const timeStr = d ? `${d.getDate()}. ${d.getMonth()+1}. – ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : '';
+  document.getElementById('snap-label').textContent = `${snapshotIndex+1} / ${total}   ${timeStr}`;
+  document.getElementById('snap-prev').disabled = (snapshotIndex <= 0);
+  document.getElementById('snap-next').disabled = (snapshotIndex >= total - 1);
+  setStatus('browsing snapshot '+( snapshotIndex+1)+'/'+total);
 }
 async function navVersion(dir) { if(autosaveLoaded&&dir===-1){await loadVersionByIndex(0);return;} const n=versionIndex+(-dir); if(n>=0&&n<versionList.length) await loadVersionByIndex(n); }
 async function loadVersionByIndex(idx) {
@@ -1569,6 +1622,8 @@ async function loadVersionByIndex(idx) {
     if(!raw) throw new Error('File not found');
     const {_snapshots, _version, _savedAt, ...data} = raw;
     currentSnapshots = _snapshots || [];
+    snapshotIndex = -1;
+    document.getElementById('snap-nav').style.display = 'none';
     applyData(data);
     autosaveLoaded=false; versionIndex=idx; setStatus('loaded ✓ '+formatFilename(file)); renderVersionNav(); isDirty=false;
   } catch(e) { alert('Load error:\n'+e.message); }
@@ -1762,7 +1817,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 2;
+const APP_BUILD = 3;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
