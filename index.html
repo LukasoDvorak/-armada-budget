@@ -314,7 +314,7 @@ body.locked .del-sub { display: none; }
 <div id="zoom-wrapper">
 <div class="topbar">
   <span class="logo">ARMADA</span>
-  <span class="subtitle">FILM PRODUCTION BUDGET · v27 · <span id="build-label"></span></span>
+  <span class="subtitle">FILM PRODUCTION BUDGET · <span id="build-label"></span></span>
   <button onclick="document.getElementById('help-overlay').style.display='flex'" title="User guide" style="background:none;border:1px solid #444;border-radius:50%;width:20px;height:20px;color:#555;font-size:11px;font-weight:700;cursor:pointer;padding:0;line-height:1;flex-shrink:0">?</button>
 </div>
 <div class="toolbar">
@@ -482,7 +482,7 @@ body.locked .del-sub { display: none; }
 // ── STATE ────────────────────────────────────────────────────────────────────
 let cats = [], dataLoaded = false, isDirty = false;
 let _undoHistory = [], _undoLastTs = 0;
-let currentProject = null, versionList = [], versionIndex = 0;
+let currentProject = null, versionList = [], versionIndex = 0, currentVersionFile = null;
 
 // ── SESSION LOCK ──────────────────────────────────────────────────────────────
 // Per-tab session ID (unique per tab, even on same device)
@@ -1162,15 +1162,22 @@ function toggleLock() {
 // ── ADD VERSION ───────────────────────────────────────────────────────────────
 async function addVersion() {
   if (!dataLoaded) { alert('No data loaded.'); return; }
-  // Auto-increment version number in h_ver field
-  const verEl = document.getElementById('h_ver');
-  const cur = verEl.value || '#1';
-  const match = cur.match(/#?(\d+)/);
-  const next = match ? parseInt(match[1]) + 1 : 2;
-  verEl.value = '#' + next;
-  // Save immediately
-  await saveData();
-  setStatus('version #' + next + ' ✓');
+  if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
+  const projName = currentProject; if (!projName) { alert('No project loaded.'); return; }
+  const nums = versionList.map(f=>{ const m=f.match(/_v(\d+)\.json$/); return m?parseInt(m[1]):0; });
+  const maxN = nums.length ? Math.max(...nums) : 0;
+  const newFile = `${projName}_v${maxN+1}.json`;
+  const hdr = gatherHeader();
+  const payload = { header:hdr, settings:gatherSettings(), cats, workingData, actualData, feeExclusions, invoiceChecked, overcostRows, rowNotes, projectNotes:getProjectNotes() };
+  try {
+    const vp = { ...payload, _version:`v${maxN+1}`, _savedAt:new Date().toISOString(), _snapshots:[] };
+    await dbxUpload('/projects/'+projName+'/'+newFile, vp);
+    await dbxUpload('/projects/'+projName+'/autosave.json', payload);
+    currentVersionFile = newFile;
+    isDirty=false; autosaveLoaded=false; versionIndex=0;
+    await loadVersionList(projName);
+    setStatus('v'+(maxN+1)+' created ✓');
+  } catch(e) { alert('Error:\n'+e.message); }
 }
 function toggleFlatFee() {
   isFlatFee = !isFlatFee;
@@ -1387,11 +1394,8 @@ async function loadDefault() {
   if (!lockOk) return;
   try {
     const entries = await dbxListFolder('/projects/'+projName);
-    const files = entries
-      .filter(e=>e['.tag']==='file'&&e.name.endsWith('.json')&&e.name!=='autosave.json'&&e.name!=='lock.json')
-      .sort((a,b)=>b.name.localeCompare(a.name))
-      .map(e=>e.name);
-    // Always prefer autosave.json if it exists (most recent work)
+    const files = await dbxListProjectFiles(projName);
+    currentVersionFile = files.filter(f=>/_v\d+\.json$/.test(f))[0] || null;
     const hasAutosave = entries.some(e=>e['.tag']==='file'&&e.name==='autosave.json');
     if (!hasAutosave && !files.length) throw new Error('No files in '+projName);
     if (hasAutosave) {
@@ -1405,10 +1409,10 @@ async function loadDefault() {
         return;
       }
     }
-    // Fall back to latest checkpoint
     if (!files.length) throw new Error('No files in '+projName);
-    const data = await dbxDownload('/projects/'+projName+'/'+files[0]);
-    if (!data) throw new Error('File not found');
+    const raw = await dbxDownload('/projects/'+projName+'/'+files[0]);
+    if (!raw) throw new Error('File not found');
+    const {_snapshots, _version, _savedAt, ...data} = raw;
     applyData(data); exitRatesMode();
     setProjectState(projName);
     autosaveLoaded=false;
@@ -1438,9 +1442,12 @@ async function loadProject() {
 }
 
 function formatFilename(f) {
-  // f may be 'v2/budget_20250101_120000.json' or plain 'budget_20250101_120000.json'
   const parts = f.split('/');
   const base = parts[parts.length-1];
+  // New format: PROJ_v1.json -> "v1"
+  const vm = base.match(/_v(\d+)\.json$/);
+  if(vm) return 'v'+vm[1];
+  // Old format: budget_YYYYMMDD_HHMMSS.json
   const verPfx = parts.length>1 ? `[${parts[0]}] ` : '';
   const m = base.match(/budget_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\.json/);
   if(m) return `${verPfx}${+m[3]}. ${+m[2]}. ${m[1]} – ${m[4]}:${m[5]}:${m[6]}`;
@@ -1458,10 +1465,15 @@ async function saveData(checkpoint=false) {
   if(checkpoint){ btn.classList.add('saving'); btn.textContent='💾 Saving…'; }
   try {
     if (checkpoint) {
-      const ts=new Date(), pad=n=>String(n).padStart(2,'0');
-      const fname=`budget_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
-      await dbxUpload('/projects/'+projName+'/'+fname, payload);
-      await dbxUpload('/projects/'+projName+'/autosave.json', payload); // keep autosave in sync
+      if (!currentVersionFile) currentVersionFile = projName+'_v1.json';
+      let existing = null;
+      try { existing = await dbxDownload('/projects/'+projName+'/'+currentVersionFile); } catch(e) {}
+      const snapshots = (existing && existing._snapshots) ? existing._snapshots : [];
+      snapshots.push({ time: new Date().toISOString(), data: payload });
+      if (snapshots.length > 20) snapshots.splice(0, snapshots.length - 20);
+      const vp = { ...payload, _version:currentVersionFile.replace('.json',''), _savedAt:new Date().toISOString(), _snapshots:snapshots };
+      await dbxUpload('/projects/'+projName+'/'+currentVersionFile, vp);
+      await dbxUpload('/projects/'+projName+'/autosave.json', payload);
     } else {
       await dbxUpload('/projects/'+projName+'/autosave.json', payload);
     }
@@ -1557,8 +1569,9 @@ async function navVersion(dir) { if(autosaveLoaded&&dir===-1){await loadVersionB
 async function loadVersionByIndex(idx) {
   const file=versionList[idx];
   try {
-    const data=await dbxDownload('/projects/'+currentProject+'/'+file);
-    if(!data) throw new Error('File not found');
+    const raw=await dbxDownload('/projects/'+currentProject+'/'+file);
+    if(!raw) throw new Error('File not found');
+    const {_snapshots, _version, _savedAt, ...data} = raw;
     applyData(data);
     autosaveLoaded=false; versionIndex=idx; setStatus('loaded ✓ '+formatFilename(file)); renderVersionNav(); isDirty=false;
   } catch(e) { alert('Load error:\n'+e.message); }
@@ -1599,10 +1612,11 @@ async function saveAsProject() {
   const payload={header:{...h,...input},settings:gatherSettings(),cats,workingData,actualData,feeExclusions,invoiceChecked,overcostRows,rowNotes,projectNotes:getProjectNotes()};
   try {
     if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
-    const ts=new Date(), pad=n=>String(n).padStart(2,'0');
-    const fname=`budget_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
-    await dbxUpload('/projects/'+projName+'/'+fname, payload);
+    const vp = { ...payload, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
+    await dbxUpload('/projects/'+projName+'/'+projName+'_v1.json', vp);
+    await dbxUpload('/projects/'+projName+'/autosave.json', payload);
     localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
+    currentVersionFile = projName+'_v1.json';
     applyData(payload); exitRatesMode(); setProjectState(projName); isDirty=false; versionIndex=0;
     await loadVersionList(projName); setStatus('saved as '+projName+' ✓');
   } catch(e) { alert('Error:\n'+e.message); }
@@ -1647,10 +1661,11 @@ async function newProjectFromRates() {
     cats:ratesData.cats, workingData:{}, actualData:{}, feeExclusions:{}, invoiceChecked:{}, overcostRows:[]
   };
   try {
-    const ts=new Date(), pad=n=>String(n).padStart(2,'0');
-    const fname=`budget_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
-    await dbxUpload('/projects/'+projName+'/'+fname, newData);
+    const vp = { ...newData, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
+    await dbxUpload('/projects/'+projName+'/'+projName+'_v1.json', vp);
+    await dbxUpload('/projects/'+projName+'/autosave.json', newData);
     localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
+    currentVersionFile = projName+'_v1.json';
     applyData(newData); setProjectState(projName); setStatus('new project ✓'); versionIndex=0; isDirty=false; await loadVersionList(projName);
   } catch(e) { alert('Error:\n'+e.message); }
 }
@@ -1728,11 +1743,14 @@ async function importProject() {
         const nameInput = await showNewProjectDialog('IMPORT PROJECT', data.header?.client||'', data.header?.agency||'');
         if (!nameInput) return;
         const projName = sanitize((nameInput.client||'')+'_'+(nameInput.agency||''))||'untitled';
-        const ts=new Date(), pad=n=>String(n).padStart(2,'0');
-        const fname=`budget_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
-        await dbxUpload('/projects/'+projName+'/'+fname, {...data, header:{...data.header,...nameInput}});
+        const cleanData = {...data, header:{...data.header,...nameInput}};
+        delete cleanData._snapshots; delete cleanData._version; delete cleanData._savedAt;
+        const vp = { ...cleanData, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
+        await dbxUpload('/projects/'+projName+'/'+projName+'_v1.json', vp);
+        await dbxUpload('/projects/'+projName+'/autosave.json', cleanData);
         localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
-        applyData(data); exitRatesMode(); setProjectState(projName); isDirty=false;
+        currentVersionFile = projName+'_v1.json';
+        applyData(cleanData); exitRatesMode(); setProjectState(projName); isDirty=false;
         versionIndex=0; await loadVersionList(projName);
         setStatus('imported \u2713 '+projName);
       } catch(err) { alert('Error:\n'+err.message); }
@@ -1746,7 +1764,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 19;
+const APP_BUILD = 20;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -1857,6 +1875,11 @@ async function dbxListFolder(path) {
 }
 async function dbxListProjectFiles(projName) {
   const entries = await dbxListFolder('/projects/'+projName);
+  const vFiles = entries
+    .filter(e=>e['.tag']==='file'&&/_v\d+\.json$/.test(e.name))
+    .sort((a,b)=>{ const na=parseInt(a.name.match(/_v(\d+)/)[1]), nb=parseInt(b.name.match(/_v(\d+)/)[1]); return nb-na; })
+    .map(e=>e.name);
+  if (vFiles.length) return vFiles;
   return entries
     .filter(e=>e['.tag']==='file'&&e.name.endsWith('.json')&&e.name!=='autosave.json'&&e.name!=='lock.json')
     .sort((a,b)=>b.name.localeCompare(a.name))
