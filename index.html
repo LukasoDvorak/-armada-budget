@@ -1120,7 +1120,21 @@ function toggleDrop(id) {
   const open = menu.style.display === 'block';
   // close all first
   document.querySelectorAll('.btn-drop-menu').forEach(m => m.style.display='none');
-  if (!open) menu.style.display = 'block';
+  if (!open) {
+    // Use fixed positioning to escape toolbar overflow clipping
+    const btn = document.querySelector('#'+id+' > button');
+    const rect = btn.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = (rect.bottom + 3) + 'px';
+    if (id === 'drop-save') {
+      menu.style.left = 'auto';
+      menu.style.right = (window.innerWidth - rect.right) + 'px';
+    } else {
+      menu.style.left = rect.left + 'px';
+      menu.style.right = 'auto';
+    }
+    menu.style.display = 'block';
+  }
 }
 function closeDrop(id) { document.getElementById(id+'-menu').style.display='none'; }
 document.addEventListener('click', e => {
@@ -1732,7 +1746,7 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 17;
+const APP_BUILD = 18;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
