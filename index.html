@@ -314,7 +314,7 @@ body.locked .del-sub { display: none; }
 <div id="zoom-wrapper">
 <div class="topbar">
   <span class="logo">ARMADA</span>
-  <span class="subtitle">FILM PRODUCTION BUDGET · <span id="build-label"></span></span>
+  <span class="subtitle">FILM PRODUCTION BUDGET · <span id="version-label"></span> · <span id="build-label"></span></span>
   <button onclick="document.getElementById('help-overlay').style.display='flex'" title="User guide" style="background:none;border:1px solid #444;border-radius:50%;width:20px;height:20px;color:#555;font-size:11px;font-weight:700;cursor:pointer;padding:0;line-height:1;flex-shrink:0">?</button>
 </div>
 <div class="toolbar">
@@ -1761,8 +1761,9 @@ function openFinder() { /* not applicable in web version */ }
 
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
-const APP_BUILD = 21;
-(()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; })();
+const APP_VERSION = 28;
+const APP_BUILD = 2;
+(()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
 const DBX_ROOT = '';
