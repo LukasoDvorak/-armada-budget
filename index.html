@@ -344,6 +344,9 @@ body.locked .del-sub { display: none; }
       <hr class="sep">
       <button onclick="closeDrop('drop-file');editRates()">📋 Rates</button>
       <hr class="sep">
+      <button onclick="closeDrop('drop-file');saveAsProject()">⎘ Save As</button>
+      <button onclick="closeDrop('drop-file');addVersion()">⊕ New Version</button>
+      <hr class="sep">
       <button id="btn-proj-export" onclick="closeDrop('drop-file');exportProject()">⬇ Export Project</button>
       <button id="btn-proj-import" onclick="closeDrop('drop-file');importProject()">⬆ Import Project</button>
       <hr class="sep" id="sep-rates-io" style="display:none">
@@ -352,14 +355,7 @@ body.locked .del-sub { display: none; }
     </div>
   </div>
   <!-- Save dropdown -->
-  <div class="btn-drop" id="drop-save" style="flex-shrink:0">
-    <button class="topbtn topbtn-orange" id="btn-save" onclick="saveData(true)">💾 Save ▾</button>
-    <div class="btn-drop-menu" id="drop-save-menu" style="left:auto;right:0">
-      <button onclick="closeDrop('drop-save');saveData(true)">💾 Save</button>
-      <button onclick="closeDrop('drop-save');saveAsProject()">⎘ Save As</button>
-      <button onclick="closeDrop('drop-save');addVersion()">⊕ New Version</button>
-    </div>
-  </div>
+  <button class="topbtn topbtn-orange" id="btn-save" onclick="saveData(true)" style="flex-shrink:0">💾 Save</button>
 </div>
 
 <div class="project-bar">
@@ -1817,7 +1813,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 3;
+const APP_BUILD = 4;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
