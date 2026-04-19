@@ -751,7 +751,7 @@ function getCatWorking(cat) { const p=cat.code+'|'; return Object.entries(workin
     nc.classList.add('nc-on');
     const inp=nc.querySelector('.nc-i'); if(!inp) return;
     inp._origVal=inp.value;
-    if(startChar!==undefined) inp.value=startChar;
+    if(startChar!==undefined){inp.value=startChar;inp.dispatchEvent(new Event('input',{bubbles:true}));}
     inp.removeAttribute('tabindex');
     inp.focus();
     if(startChar===undefined) requestAnimationFrame(()=>{ try{inp.select();}catch(e){} });
@@ -1816,7 +1816,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 5;
+const APP_BUILD = 6;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2099,25 +2099,25 @@ function numInpRaw(val,onchange){
   const oc=onchange.replace(/"/g,'&quot;');
   return `<div class="nc" data-fmt="raw" tabindex="0"><span class="nc-d">${d}</span><input class="nc-i" type="number" tabindex="-1" value="${v}" oninput="${oc}"></div>`;
 }
-function updateCrew(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f]=parseFloat(val)||0;const r=cat.sections[si].rows[ri],el=document.getElementById(`crow-${code}-${si}-${ri}`);if(el)el.textContent=(r[2]*r[3]+r[4]*r[5])>0?fmt(r[2]*r[3]+r[4]*r[5]):'—';recalcCat(code);}
+function updateCrew(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f]=parseFloat(val)||0;const r=cat.sections[si].rows[ri],el=document.getElementById(`crow-${code}-${si}-${ri}`);if(el)el.textContent=(r[2]*r[3]+r[4]*r[5])>0?fmt(r[2]*r[3]+r[4]*r[5]):'—';isDirty=true;recalcCat(code);}
 function updateCrewText(code,si,ri,f,val){cats.find(c=>c.code===code).sections[si].rows[ri][f]=val;}
-function updateCrewQty(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f===0?2:3]=parseFloat(val)||0;const[,,,q,r]=[,,cat.sections[si].rows[ri][2],cat.sections[si].rows[ri][2],cat.sections[si].rows[ri][3]];const[,,qq,rr]=cat.sections[si].rows[ri];const el=document.getElementById(`cq-${code}-${si}-${ri}`);if(el)el.textContent=qq*rr>0?fmt(qq*rr):'—';recalcCat(code);}
-function updateOT(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f===0?1:2]=parseFloat(val)||0;const r=cat.sections[si].rows[ri],el=document.getElementById(`ot-${code}-${si}-${ri}`);if(el)el.textContent=fmt(r[1]*r[2]);recalcCat(code);}
-function updateOTTriple(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f+1]=parseFloat(val)||0;const r=cat.sections[si].rows[ri],tot=r[1]*r[2]*r[3],el=document.getElementById(`ot-${code}-${si}-${ri}`);if(el)el.textContent=fmt(tot);recalcCat(code);}
-function updateCrewTriple(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f+1]=parseFloat(val)||0;const r=cat.sections[si].rows[ri],tot=r[1]*r[2]*r[3],el=document.getElementById(`ct-${code}-${si}-${ri}`);if(el)el.textContent=tot>0?fmt(tot):'—';recalcCat(code);}
-function updateVanSec(code,si,ri,k,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri].subs[k][f===0?1:2]=parseFloat(val)||0;const[,q,r]=cat.sections[si].rows[ri].subs[k];const s=document.getElementById(`vsub2-${code}-${si}-${ri}-${k}`);if(s)s.textContent=q*r>0?fmt(q*r):'—';const vt=cat.sections[si].rows[ri].subs.reduce((s,[,q2,r2])=>s+q2*r2,0);const v=document.getElementById(`vsub-${code}-${si}-${ri}`);if(v)v.textContent=vt>0?fmt(vt):'—';recalcCat(code);}
-function updateTransport(code,vi,si,f,val){const cat=cats.find(c=>c.code===code);cat.vans[vi].subs[si][f===0?1:2]=parseFloat(val)||0;const[,q,r]=cat.vans[vi].subs[si];const s=document.getElementById(`ts-${code}-${vi}-${si}`);if(s)s.textContent=q*r>0?fmt(q*r):'—';const vt=cat.vans[vi].subs.reduce((s,[,q2,r2])=>s+q2*r2,0);const v=document.getElementById(`vt-${code}-${vi}`);if(v)v.textContent=fmt(vt);recalcCat(code);}
-function updateTalentFlat(code,si,ri,val){cats.find(c=>c.code===code).sections[si].rows[ri].amount=parseFloat(val)||0;recalcCat(code);}
-function updateTalentQty(code,si,ri,f,val){const cat=cats.find(c=>c.code===code),row=cat.sections[si].rows[ri];if(f===0)row.qty=parseFloat(val)||0;else row.rate=parseFloat(val)||0;const el=document.getElementById(`tq-${code}-${si}-${ri}`);if(el)el.textContent=row.qty*row.rate>0?fmt(row.qty*row.rate):'—';recalcCat(code);}
+function updateCrewQty(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f===0?2:3]=parseFloat(val)||0;const[,,,q,r]=[,,cat.sections[si].rows[ri][2],cat.sections[si].rows[ri][2],cat.sections[si].rows[ri][3]];const[,,qq,rr]=cat.sections[si].rows[ri];const el=document.getElementById(`cq-${code}-${si}-${ri}`);if(el)el.textContent=qq*rr>0?fmt(qq*rr):'—';isDirty=true;recalcCat(code);}
+function updateOT(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f===0?1:2]=parseFloat(val)||0;const r=cat.sections[si].rows[ri],el=document.getElementById(`ot-${code}-${si}-${ri}`);if(el)el.textContent=fmt(r[1]*r[2]);isDirty=true;recalcCat(code);}
+function updateOTTriple(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f+1]=parseFloat(val)||0;const r=cat.sections[si].rows[ri],tot=r[1]*r[2]*r[3],el=document.getElementById(`ot-${code}-${si}-${ri}`);if(el)el.textContent=fmt(tot);isDirty=true;recalcCat(code);}
+function updateCrewTriple(code,si,ri,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri][f+1]=parseFloat(val)||0;const r=cat.sections[si].rows[ri],tot=r[1]*r[2]*r[3],el=document.getElementById(`ct-${code}-${si}-${ri}`);if(el)el.textContent=tot>0?fmt(tot):'—';isDirty=true;recalcCat(code);}
+function updateVanSec(code,si,ri,k,f,val){const cat=cats.find(c=>c.code===code);cat.sections[si].rows[ri].subs[k][f===0?1:2]=parseFloat(val)||0;const[,q,r]=cat.sections[si].rows[ri].subs[k];const s=document.getElementById(`vsub2-${code}-${si}-${ri}-${k}`);if(s)s.textContent=q*r>0?fmt(q*r):'—';const vt=cat.sections[si].rows[ri].subs.reduce((s,[,q2,r2])=>s+q2*r2,0);const v=document.getElementById(`vsub-${code}-${si}-${ri}`);if(v)v.textContent=vt>0?fmt(vt):'—';isDirty=true;recalcCat(code);}
+function updateTransport(code,vi,si,f,val){const cat=cats.find(c=>c.code===code);cat.vans[vi].subs[si][f===0?1:2]=parseFloat(val)||0;const[,q,r]=cat.vans[vi].subs[si];const s=document.getElementById(`ts-${code}-${vi}-${si}`);if(s)s.textContent=q*r>0?fmt(q*r):'—';const vt=cat.vans[vi].subs.reduce((s,[,q2,r2])=>s+q2*r2,0);const v=document.getElementById(`vt-${code}-${vi}`);if(v)v.textContent=fmt(vt);isDirty=true;recalcCat(code);}
+function updateTalentFlat(code,si,ri,val){cats.find(c=>c.code===code).sections[si].rows[ri].amount=parseFloat(val)||0;isDirty=true;recalcCat(code);}
+function updateTalentQty(code,si,ri,f,val){const cat=cats.find(c=>c.code===code),row=cat.sections[si].rows[ri];if(f===0)row.qty=parseFloat(val)||0;else row.rate=parseFloat(val)||0;const el=document.getElementById(`tq-${code}-${si}-${ri}`);if(el)el.textContent=row.qty*row.rate>0?fmt(row.qty*row.rate):'—';isDirty=true;recalcCat(code);}
 function updateTalentSub(code,si,ri,k,f,val){
   const cat=cats.find(c=>c.code===code),row=cat.sections[si].rows[ri];
   row.subs[k][f===0?1:2]=parseFloat(val)||0;
   if(f===1||!row.subs[k][3])recalcAgencyFees(row.subs);
   const el=document.getElementById(`tt-${code}-${si}-${ri}`);if(el)el.textContent=fmt(row.subs.reduce((s,[,q,r])=>s+q*r,0));
   row.subs.forEach(([,q,r],idx)=>{const s=document.getElementById(`tsub-${code}-${si}-${ri}-${idx}`);if(s)s.textContent=q*r>0?fmt(q*r):'—';const rl=document.getElementById(`tsub-rate-${code}-${si}-${ri}-${idx}`);if(rl)rl.textContent=r>0?fmt(r):'—';});
-  recalcCat(code);
+  isDirty=true;recalcCat(code);
 }
-function updateStd(code,ri,f,val){const cat=cats.find(c=>c.code===code);if(f===0)cat.rows[ri][2]=parseFloat(val)||0;else cat.rows[ri][3]=parseFloat(val)||0;const[,,q,r]=cat.rows[ri],el=document.getElementById(`std-${code}-${ri}`);if(el)el.textContent=q*r>0?fmt(q*r):'—';recalcCat(code);}
+function updateStd(code,ri,f,val){const cat=cats.find(c=>c.code===code);if(f===0)cat.rows[ri][2]=parseFloat(val)||0;else cat.rows[ri][3]=parseFloat(val)||0;const[,,q,r]=cat.rows[ri],el=document.getElementById(`std-${code}-${ri}`);if(el)el.textContent=q*r>0?fmt(q*r):'—';isDirty=true;recalcCat(code);}
 function editAgencyFee(code,si,ri,k){
   const ans=prompt('Agency Fee: enter % (e.g. "25") or fixed amount (e.g. "10000").\nEmpty = restore auto 20%:');
   if(ans===null)return;
@@ -2435,11 +2435,16 @@ function renderCats() {
 
 function addTalentRow(code,si){
   const cat=cats.find(c=>c.code===code), sec=cat.sections[si];
-  const last=sec.rows[sec.rows.length-1];
+  const hasSubsRows=sec.rows.some(r=>r.subs);
   let row;
-  if(last?.qty!==undefined)         row={name:"New Item",qty:1,rate:0};
-  else if(last?.amount!==undefined) row={name:"New Item",amount:0};
-  else                               row={name:"New Talent",subs:[["Daily Fee",1,0],["Agency Fee 20%",1,0,true]]};
+  if(hasSubsRows)
+    row={name:"New Talent",subs:[["Daily Fee",1,0],["Buyout Video",1,0],["Agency Fee 20%",1,0,true]]};
+  else {
+    const last=sec.rows[sec.rows.length-1];
+    if(last?.qty!==undefined) row={name:"New Item",qty:1,rate:0};
+    else if(last?.amount!==undefined) row={name:"New Item",amount:0};
+    else row={name:"New Talent",subs:[["Daily Fee",1,0],["Buyout Video",1,0],["Agency Fee 20%",1,0,true]]};
+  }
   sec.rows.push(row); renderCats(); isDirty=true;
 }
 
