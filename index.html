@@ -1816,7 +1816,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 6;
+const APP_BUILD = 7;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2364,7 +2364,7 @@ function renderCats() {
       const talentCnt={n:0};
       cat.sections.forEach((sec,si)=>{
         html+=`<div class="sec-hdr">${sec.name}</div>`;
-        html+=`<div class="cat-toolbar"><button class="tbtn" onclick="addTalentRow('${cat.code}',${si})">+ Add</button><span class="ctx-hint">right-click for options</span></div>`;
+        html+=`<div class="cat-toolbar"><button class="tbtn" onclick="addTalentItem('${cat.code}',${si})">+ Add Item</button><button class="tbtn" style="margin-left:4px" onclick="addTalentSubs('${cat.code}',${si})">+ Add Talent</button><span class="ctx-hint">right-click for options</span></div>`;
         html+=`<table><thead><tr><th style="width:24px"></th><th class="thl" style="width:160px">Name</th><th style="width:55px">Qty</th><th style="width:88px">Rate</th><th style="width:100px">Total</th>${extraHeaders()}</tr></thead><tbody>`;
         sec.rows.forEach((row,ri)=>{
           const wk=crewKey(cat.code,si,ri);
@@ -2435,17 +2435,22 @@ function renderCats() {
 
 function addTalentRow(code,si){
   const cat=cats.find(c=>c.code===code), sec=cat.sections[si];
-  const hasSubsRows=sec.rows.some(r=>r.subs);
+  const last=sec.rows[sec.rows.length-1];
   let row;
-  if(hasSubsRows)
-    row={name:"New Talent",subs:[["Daily Fee",1,0],["Buyout Video",1,0],["Agency Fee 20%",1,0,true]]};
-  else {
-    const last=sec.rows[sec.rows.length-1];
-    if(last?.qty!==undefined) row={name:"New Item",qty:1,rate:0};
-    else if(last?.amount!==undefined) row={name:"New Item",amount:0};
-    else row={name:"New Talent",subs:[["Daily Fee",1,0],["Buyout Video",1,0],["Agency Fee 20%",1,0,true]]};
-  }
+  if(last?.qty!==undefined) row={name:"New Item",qty:1,rate:0};
+  else if(last?.amount!==undefined) row={name:"New Item",amount:0};
+  else row={name:"New Talent",subs:[["Daily Fee",1,0],["Buyout Video",1,0],["Agency Fee 20%",1,0,true]]};
   sec.rows.push(row); renderCats(); isDirty=true;
+}
+function addTalentItem(code,si){
+  const cat=cats.find(c=>c.code===code);
+  cat.sections[si].rows.push({name:"New Item",qty:1,rate:0});
+  renderCats(); isDirty=true;
+}
+function addTalentSubs(code,si){
+  const cat=cats.find(c=>c.code===code);
+  cat.sections[si].rows.push({name:"New Talent",subs:[["Daily Fee",1,0],["Buyout Video",1,0],["Agency Fee 20%",1,0,true]]});
+  renderCats(); isDirty=true;
 }
 
 function recalcCat(code){
