@@ -147,9 +147,9 @@ input.actual-inp  { width: 80px; padding: 2px 4px; font-size: 13px; border: 1px 
 .sum-saving-pos { color: #6f6 !important; }
 .sum-saving-neg { color: #f66 !important; }
 /* Sticky total bar */
-#sticky-total { position: fixed; bottom: 0; left: 0; right: 0; background: #0f0f0f; border-top: 2px solid #ff6b00; padding: 6px 18px; display: flex; align-items: center; justify-content: space-between; z-index: 900; font-size: 12px; }
-#sticky-total .st-label { color: #555; font-size: 10px; letter-spacing: 1px; }
-#sticky-total .st-val { color: #ff6b00; font-weight: 700; font-size: 15px; letter-spacing: 1px; }
+#sticky-total { position: fixed; bottom: 0; left: 0; right: 0; background: #0f0f0f; border-top: 2px solid #ff6b00; padding: 9px 22px; display: flex; align-items: center; justify-content: space-between; z-index: 900; font-size: 14px; }
+#sticky-total .st-label { color: #555; font-size: 12px; letter-spacing: 1px; }
+#sticky-total .st-val { color: #ff6b00; font-weight: 700; font-size: 20px; letter-spacing: 1px; }
 #sticky-total .st-parts { display: flex; gap: 18px; align-items: center; }
 #sticky-total .st-part { display: flex; flex-direction: column; align-items: flex-end; }
 body { padding-bottom: 44px; } /* space for sticky bar */
@@ -334,6 +334,7 @@ body.locked .del-sub { display: none; }
   <button class="topbtn" id="btn-working"  onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported" style="flex-shrink:0">🔧 Working</button>
   <button class="topbtn" id="btn-actual"   onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer" style="flex-shrink:0">📌 Actual</button>
   <button class="topbtn" id="btn-overcost" onclick="toggleOvercost()" title="Overcost items above budget" style="flex-shrink:0">⚠ Overcost</button>
+  <button class="topbtn" id="btn-ot" onclick="showOTTotal()" title="Sum of overtime costs (C incl. fee, F G H I J K L)" style="flex-shrink:0">⏱ OT</button>
   <button class="topbtn" id="btn-lock"     onclick="toggleLock()"     title="Lock budget" style="flex-shrink:0">🔒 Lock</button>
   <button class="topbtn" id="btn-notes"    onclick="toggleNotesPanel()" title="Project notes" style="flex-shrink:0">📝 Notes</button>
   <!-- File dropdown -->
@@ -480,9 +481,9 @@ body.locked .del-sub { display: none; }
 
 <div id="sticky-total">
   <div class="st-parts">
-    <div class="st-part"><span class="st-label">SUBTOTAL</span><span id="st-sub" style="color:#ccc;font-weight:600;font-size:12px">—</span></div>
-    <div class="st-part"><span class="st-label">FEE</span><span id="st-fee" style="color:#888;font-size:11px">—</span></div>
-    <div class="st-part"><span class="st-label">INS</span><span id="st-ins" style="color:#888;font-size:11px">—</span></div>
+    <div class="st-part"><span class="st-label">SUBTOTAL</span><span id="st-sub" style="color:#ccc;font-weight:600;font-size:16px">—</span></div>
+    <div class="st-part"><span class="st-label">FEE</span><span id="st-fee" style="color:#888;font-size:14px">—</span></div>
+    <div class="st-part"><span class="st-label">INS</span><span id="st-ins" style="color:#888;font-size:14px">—</span></div>
     <div class="st-part" id="st-working-part" style="display:none"><span class="st-label" style="color:#4d4">W GRAND</span><span id="st-working" style="color:#4d4;font-weight:700;font-size:13px">—</span><span id="st-working-sub" style="color:#4d4;font-size:9px;opacity:0.7">—</span></div>
   <div class="st-part" id="st-actual-part" style="display:none"><span class="st-label" style="color:#6d6">A GRAND</span><span id="st-actual" style="color:#6d6;font-weight:700;font-size:13px">—</span><span id="st-actual-sub" style="color:#6d6;font-size:9px;opacity:0.7">—</span></div>
   <div class="st-part" style="display:none"><span class="st-label" style="color:#ff9966">OVERCOST</span><span id="st-oc" style="color:#ff9966;font-size:11px">—</span></div>
@@ -1832,7 +1833,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 11;
+const APP_BUILD = 12;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2081,10 +2082,44 @@ function startInlineEdit(el, isNum, cur, onSave) {
   el.innerHTML=`<input type="${isNum?'number':'text'}" class="${isNum?'cell-num':'cell-text'}" value="${cur}" style="width:${isNum?'70px':'140px'}">`;
   const inp=el.querySelector('input'); inp.focus(); inp.select();
   const save=()=>{const v=isNum?(parseFloat(inp.value)||0):inp.value;el.innerHTML=String(v);onSave(v);};
-  inp.onblur=save; inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')el.innerHTML=cur;};
+  inp.onblur=save; inp.onkeydown=e=>{if(e.key==='Enter'){e.stopPropagation();inp.blur();}if(e.key==='Escape'){e.stopPropagation();e.preventDefault();inp.onblur=null;el.innerHTML=cur;}};
 }
 
 // Drag & drop
+function calcOTTotal(){
+  const OT=new Set(['C','F','G','H','I','J','K','L']);
+  let tot=0;
+  cats.forEach(cat=>{
+    if(!OT.has(cat.code))return;
+    if(cat.type==='talent'){
+      cat.sections.forEach(sec=>sec.rows.forEach(row=>{
+        if(!row.subs)return;
+        let rowOT=0;
+        row.subs.forEach(([lbl,q,r,isAF])=>{if(!isAF&&/overtime/i.test(lbl))rowOT+=q*r;});
+        if(rowOT>0)tot+=Math.round(rowOT*1.2);
+      }));
+    } else if(cat.type==='crew'){
+      cat.sections.forEach(sec=>{
+        if(sec.name!=='Overtimes')return;
+        sec.rows.forEach(row=>{tot+=rowTotal(row,true);});
+      });
+    }
+  });
+  return Math.round(tot);
+}
+function showOTTotal(){
+  const t=calcOTTotal();
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML=`<div style='background:#111;border:1px solid #333;border-radius:8px;padding:28px 32px;min-width:280px;font-family:inherit;text-align:center'>
+    <div style='color:#888;font-size:9px;letter-spacing:2px;margin-bottom:12px'>OVERTIME TOTAL</div>
+    <div style='color:#ff6b00;font-size:22px;font-weight:700;letter-spacing:1px'>${Math.round(t).toLocaleString('cs-CZ')} CZK</div>
+    <div style='color:#555;font-size:9px;margin-top:8px;letter-spacing:0.5px'>C (incl. 20% agency fee) · F G H I J K L</div>
+    <button onclick='this.closest("div").parentNode.remove()' style='margin-top:20px;padding:6px 20px;background:transparent;border:1px solid #333;border-radius:4px;color:#666;font-family:inherit;font-size:10px;cursor:pointer'>Close</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+}
 let dragSrc=null;
 function onDragStartSub(e,code,si,ri,k){dragSrc={code,si,ri,k};e.dataTransfer.effectAllowed='move';e.currentTarget.closest('tr').classList.add('dragging');}
 function onDropSub(e,code,si,ri,k){
@@ -2860,8 +2895,8 @@ function exportPDF(){
   y=28;
 
   // Info grid (2 columns)
-  const infoL=[['CLIENT',g('h_client')],['DIRECTOR',g('h_dir')],['DOP',g('h_dop')],['PRODUCTION CONTACT',g('h_pc')]];
-  const infoR=[['AGENCY',g('h_agency')],['AGENCY PRODUCER',g('h_agprod')],['EXECUTIVE PRODUCER',g('h_ep')],['','']];
+  const infoL=[['CLIENT',g('h_client')],['AGENCY',g('h_agency')],['DIRECTOR',g('h_dir')],['EXECUTIVE PRODUCER',g('h_ep')]];
+  const infoR=[['PROJECT',g('h_project')],['AGENCY PRODUCER',g('h_agprod')],['DOP',g('h_dop')],['PRODUCTION CONTACT',g('h_pc')]];
   for(let i=0;i<infoL.length;i++){
     const [l1,v1]=infoL[i],[l2,v2]=infoR[i];
     doc.setFont('helvetica','bold'); doc.setFontSize(6); doc.setTextColor(120,120,120);
