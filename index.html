@@ -156,7 +156,7 @@ body { padding-bottom: 44px; } /* space for sticky bar */
 /* Lock mode */
 body.locked input[type=number]:not(.working-inp):not(.actual-inp), body.locked input[type=text]:not(.working-inp):not(.actual-inp), body.locked textarea { pointer-events: none; background: #f8f8f8 !important; color: #999 !important; border-color: #eee !important; }
 body.locked .editable { pointer-events: none; }
-body.locked .tbtn, body.locked .topbtn:not(#btn-lock):not(#btn-save):not(#btn-working):not(#btn-actual) { opacity: 0.4; pointer-events: none; }
+body.locked .tbtn, body.locked .tab, body.locked .topbtn:not(#btn-lock):not(#btn-save):not(#btn-working):not(#btn-actual) { opacity: 0.4; pointer-events: none; }
 body.locked .del-sub { display: none; }
 /* Context menu */
 #ctx-menu { position: fixed; background: #1a1a1a; border: 1px solid #333; border-radius: 5px; padding: 4px 0; z-index: 9999; min-width: 168px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); font-family: 'DM Mono','Courier New',monospace; display: none; }
@@ -780,7 +780,7 @@ function getCatWorking(cat) { const p=cat.code+'|'; return Object.entries(workin
     if(!inp) return;
     const nc=inp.closest&&inp.closest('.nc'); if(!nc) return;
     const d=nc.querySelector('.nc-d'); if(!d) return;
-    const v=parseFloat(inp.value)||0; d.textContent=v?fmt(v):''; if(inp.classList.contains('working-inp'))d.style.color=v?'#ff6b00':'';
+    const v=parseFloat(inp.value)||0; d.textContent=v?fmt(v):''; if(inp.classList.contains('actual-inp'))d.style.color=v?'#ff6b00':''; else d.style.color='';
   };
 
   // ── postRenderNav: stamp .td-lbl on label cells after render ──
@@ -1294,14 +1294,14 @@ function showCtx(e, items) {
     d.onclick = ev => { ev.stopPropagation(); hideCtx(); item.fn(); };
     menu.appendChild(d);
   });
-  // Use getBoundingClientRect + offsetX/Y — works correctly with html { zoom: 1.5 }
-  // (e.clientX/Y are in physical px, but position:fixed uses CSS px scaled by zoom)
-  const tRect = e.target.getBoundingClientRect();
-  menu.style.left = '0'; menu.style.top = '0';
+  // Safari: e.clientX/Y are in physical px, position:fixed uses CSS px
+  // html { zoom: 1.5 } means 1 CSS px = 1.5 physical px → divide by zoom
+  const htmlZoom = parseFloat(window.getComputedStyle(document.documentElement).zoom) || 1;
+  let x = e.clientX / htmlZoom;
+  let y = e.clientY / htmlZoom;
+  menu.style.left = x + 'px'; menu.style.top = y + 'px';
   menu.style.display = 'block';
   const r = menu.getBoundingClientRect();
-  let x = tRect.left + (e.offsetX || 0);
-  let y = tRect.top  + (e.offsetY || 0);
   const vpW = document.documentElement.clientWidth;
   const vpH = document.documentElement.clientHeight;
   if (x + r.width  > vpW) x = vpW - r.width  - 4;
@@ -1912,7 +1912,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 20;
+const APP_BUILD = 21;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2299,12 +2299,12 @@ function extraCols(tot, key){
     const inv=invoiceChecked[key];
     const wVal=workingData[key]||0;
     // NOTE: b15 — working cells: no background colors, orange text. May revert to colored backgrounds if user prefers.
-    h+=`<td class="td-work"><div class="td-work-inner">${(()=>{const _d=wVal?fmt(wVal):'';return `<div class="nc" tabindex="0"><span class="nc-d" style="color:${wVal?'#ff6b00':'inherit'}">${_d}</span><input class="nc-i working-inp" type="number" tabindex="-1" value="${wVal}" oninput="setWorking('${key}',this.value);ncUpdDisp(this)"></div>`;})()}<input type="checkbox" class="inv-chk" title="Invoice received" ${inv?'checked':''} onchange="toggleInvoice('${key}')"></div></td>`;
+    h+=`<td class="td-work"><div class="td-work-inner">${(()=>{const _d=wVal?fmt(wVal):'';return `<div class="nc" tabindex="0"><span class="nc-d">${_d}</span><input class="nc-i working-inp" type="number" tabindex="-1" value="${wVal}" oninput="setWorking('${key}',this.value);ncUpdDisp(this)"></div>`;})()}<input type="checkbox" class="inv-chk" title="Invoice received" ${inv?'checked':''} onchange="toggleInvoice('${key}')"></div></td>`;
   }
   if(actualMode){
     const aVal=actualData[key]||0;
     const aBg=aVal===0?'':(aVal<tot?'background:#d0f0d0':aVal>tot?'background:#ffd0d0':'background:#fff');
-    h+=`<td class="td-actual" style="${aBg}">${(()=>{const _d=aVal?fmt(aVal):'';return `<div class="nc" tabindex="0"><span class="nc-d">${_d}</span><input class="nc-i actual-inp" type="number" tabindex="-1" value="${aVal}" oninput="setActual('${key}',this.value);ncUpdDisp(this)"></div>`;})()}</td>`;
+    h+=`<td class="td-actual" style="${aBg}">${(()=>{const _d=aVal?fmt(aVal):'';return `<div class="nc" tabindex="0"><span class="nc-d" style="color:${aVal?'#ff6b00':''}">${_d}</span><input class="nc-i actual-inp" type="number" tabindex="-1" value="${aVal}" oninput="setActual('${key}',this.value);ncUpdDisp(this)"></div>`;})()}</td>`;
   }
   return h;
 }
@@ -2320,11 +2320,14 @@ function extraEmpty(){
 // ── RENDER CREW SECTION ───────────────────────────────────────────────────────
 function renderCrewSec(cat, si, sec, counter) {
   const isOT=sec.name==='Overtimes', isTr=sec.name==='Transport';
+  // Expense-only section: all rows are [name, note, qty, rate] (length 4, note is string)
+  const isExp=!isOT&&!isTr&&sec.rows.length>0&&sec.rows.every(r=>Array.isArray(r)&&r.length===4&&typeof r[1]==='string');
   let html=`<div class="sec-hdr">${sec.name||'CREW'}</div>`;
 
   if(!isTr){
     html+='<table><thead><tr><th class="thl" style="width:24px"></th><th class="thl" style="width:160px"></th>';
-    if(isOT) html+=`<th style="width:72px">People</th><th style="width:36px">×</th><th style="width:88px">Rate</th><th style="width:100px">Total</th>`;
+    if(isOT)  html+=`<th style="width:72px">People</th><th style="width:36px">×</th><th style="width:88px">Rate</th><th style="width:100px">Total</th>`;
+    else if(isExp) html+=`<th style="width:88px">Qty</th><th style="width:88px">Rate</th><th style="width:100px">Total</th>`;
     else      html+=`<th style="width:72px">Prep d</th><th style="width:88px">Prep rate</th><th style="width:72px">Shoot d</th><th style="width:88px">Shoot rate</th><th style="width:100px">Total</th>`;
     html+=extraHeaders()+'</tr></thead><tbody>';
 
@@ -2386,7 +2389,7 @@ function renderCrewSec(cat, si, sec, counter) {
         html+=`<tr${bg} ${dnd} oncontextmenu="ctxCrew(event,'${cat.code}',${si},${ri})">
           <td class="drag-col">⠿</td>
           <td>${rowCode(cat,++counter.n)}${makeEditable(name,`updateCrewText('${cat.code}',${si},${ri},0,v)`)}<div class="item-note" contenteditable="true" onblur="updateCrewText('${cat.code}',${si},${ri},1,this.textContent.trim())">${note||''}</div></td>
-          <td colspan="2"></td>
+          ${isExp?'':`<td colspan="2"></td>`}
           <td>${numInpRaw(qty,`updateCrewQty('${cat.code}',${si},${ri},0,this.value)`)}</td>
           <td>${numInp(rate,`updateCrewQty('${cat.code}',${si},${ri},1,this.value)`)}</td>
           <td class="tdr" style="font-weight:600" id="cq-${cat.code}-${si}-${ri}">${tot>0?fmt(tot):'—'}</td>
@@ -2794,9 +2797,9 @@ function exportPDF(){
   // ── Layout constants ──────────────────────────────────────────────────────
   const PW=210, PH=297, ML=14, MR=196, CW=MR-ML;
   // Crew columns — compress SR/SD when alt currency shown
-  const C = {PD:112, PR:showAlt?132:136, SD:showAlt?149:156, SR:showAlt?164:179};
+  const C = {PD:112, PR:showAlt?132:136, SD:showAlt?149:156, SR:showAlt?164:(showActualPDF?168:179)};
   // Std / qty columns
-  const Q = {QTY:144, RATE:showAlt?161:173};
+  const Q = {QTY:144, RATE:showAlt?161:(showActualPDF?168:173)};
   // Row heights
   const RH=6.5;   // standard row
   const SH=5;     // van sub-row
@@ -2820,15 +2823,16 @@ function exportPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(120,120,120);
     doc.text(fmtAltPDF(val),TOT_ALT,yy,{align:'right'});
   }
-  // helper: print actual value in small green under/next to total
+  // helper: print actual value as proper column
   function pActual(aVal,yy){
     if(!showActualPDF||!(aVal>0))return;
-    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(60,160,60);
-    doc.text('ACT: '+Math.round(aVal).toLocaleString('cs-CZ'),TOT_CZK,yy+3.2,{align:'right'});
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);
+    doc.text(Math.round(aVal).toLocaleString('cs-CZ')+' CZK',TOT_ACT,yy,{align:'right'});
   }
-  // When alt enabled, shift CZK total column left to make room
-  const TOT_CZK = showAlt ? MR-16 : MR;  // shifts CZK col left to fit alt
-  const TOT_ALT = MR;
+  // Column positions — shift left when alt and/or actual enabled
+  const TOT_ACT = showActualPDF ? MR : null;
+  const TOT_CZK = showActualPDF ? (showAlt ? MR-34 : MR-20) : (showAlt ? MR-16 : MR);
+  const TOT_ALT = showActualPDF ? MR-20 : MR;
 
   let y=0, _pg=1;
 
@@ -2868,6 +2872,7 @@ function exportPDF(){
     }
     doc.text(showAlt?'CZK':'TOTAL', TOT_CZK, y+6, {align:'right'});
     if(showAlt){ doc.setTextColor(85,85,85); doc.text(altCurName.toUpperCase(), TOT_ALT, y+6, {align:'right'}); }
+    if(showActualPDF){ doc.setTextColor(255,107,0); doc.text('ACTUAL', TOT_ACT, y+6, {align:'right'}); }
     y+=BH+1;
   }
 
@@ -2904,8 +2909,7 @@ function exportPDF(){
   // ── Crew 6-field row [name, note, pd, pr, sd, sr] ────────────────────────
   function crewRow(code, name, noteText, pd, pr, sd, sr, aVal=0){
     const tot=pd*pr+sd*sr;
-    const _ah=showActualPDF&&aVal>0?3.2:0;
-    chk(RH+(noteText?NH:0)+_ah);
+    chk(RH+(noteText?NH:0));
     doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0);
     doc.text(code, ML+1, y+4.5);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(20,20,20);
@@ -2918,14 +2922,13 @@ function exportPDF(){
     doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(20,20,20);
     doc.text(tot>0?fmt(tot):'—', TOT_CZK, y+4.5, {align:'right'});
     pAlt(tot,y+4.5); pActual(aVal,y+4.5);
-    y+=RH+_ah; noteRow(noteText); drawSep(); y+=0.5;
+    y+=RH; noteRow(noteText); drawSep(); y+=0.5;
   }
 
   // ── Std row (4-el expense or std cat): [desc, note, qty, rate] ───────────
   function stdRow(code, name, noteText, qty, rate, aVal=0){
     const tot=qty*rate;
-    const _ah=showActualPDF&&aVal>0?3.2:0;
-    chk(RH+(noteText?NH:0)+_ah);
+    chk(RH+(noteText?NH:0));
     doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0);
     doc.text(code, ML+1, y+4.5);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(20,20,20);
@@ -2936,7 +2939,7 @@ function exportPDF(){
     doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(20,20,20);
     doc.text(tot>0?fmt(tot):'—', TOT_CZK, y+4.5, {align:'right'});
     pAlt(tot,y+4.5); pActual(aVal,y+4.5);
-    y+=RH+_ah; noteRow(noteText); drawSep(); y+=0.5;
+    y+=RH; noteRow(noteText); drawSep(); y+=0.5;
   }
 
   // ── OT row (3-el): [name, qty, rate] ─────────────────────────────────────
@@ -3040,6 +3043,7 @@ function exportPDF(){
   doc.text('CATEGORY', ML+13, y+5.5);
   doc.text(showAlt?'TOTAL CZK':'TOTAL', TOT_CZK, y+5.5, {align:'right'});
   if(showAlt){ doc.setTextColor(120,120,120); doc.text(altCurName, TOT_ALT, y+5.5, {align:'right'}); }
+  if(showActualPDF){ doc.setTextColor(255,107,0); doc.text('ACTUAL', TOT_ACT, y+5.5, {align:'right'}); }
   y+=9;
 
   // Category rows
@@ -3052,7 +3056,7 @@ function exportPDF(){
     doc.text(cat.label.toUpperCase(), ML+13, y+4.5);
     doc.setFont('helvetica','bold'); doc.text(fmt(tot), TOT_CZK, y+4.5, {align:'right'});
     if(showAlt&&tot>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text(fmtAltPDF(tot), TOT_ALT, y+4.5, {align:'right'}); }
-    if(showActualPDF){const _acat=getCatActual(cat);if(_acat>0){doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(60,160,60);doc.text('ACT: '+Math.round(_acat).toLocaleString('cs-CZ'),TOT_CZK,y+7.8,{align:'right'});y+=3.5;}}
+    if(showActualPDF){const _acat=getCatActual(cat);if(_acat>0){doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_acat).toLocaleString('cs-CZ')+' CZK',TOT_ACT,y+4.5,{align:'right'});}}
     y+=RH; drawSep(); y+=0.5;
   });
   y+=4;
@@ -3119,8 +3123,7 @@ function exportPDF(){
             const code=cat.code+String(++n).padStart(2,'0');
             const tot=row[1]*row[2]*row[3];
             const _aVal=actualData[crewKey(cat.code,si,ri)]||0;
-            const _ah=showActualPDF&&_aVal>0?3.2:0;
-            chk(RH+(_rn?NH:0)+_ah);
+            chk(RH+(_rn?NH:0));
             doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0);
             doc.text(code, ML+1, y+4.5);
             doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(20,20,20);
@@ -3128,7 +3131,7 @@ function exportPDF(){
             doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(20,20,20);
             doc.text(tot>0?fmt(tot):'—', TOT_CZK, y+4.5, {align:'right'});
             pAlt(tot,y+4.5); pActual(_aVal,y+4.5);
-            y+=RH+_ah; noteRow(_rn); drawSep(); y+=0.5;
+            y+=RH; noteRow(_rn); drawSep(); y+=0.5;
           } else if(row.length===4){
             if(row[2]*row[3]===0) return;
             const code=cat.code+String(++n).padStart(2,'0');
@@ -3180,19 +3183,18 @@ function exportPDF(){
           if(row.qty!==undefined){
             stdRow(code, row.name, _rn, row.qty, row.rate, _aValT);
           } else if(row.amount!==undefined){
-            const _ah=showActualPDF&&_aValT>0?3.2:0;
-            chk(RH+_ah);
+            chk(RH);
             doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0);
             doc.text(code, ML+1, y+4.5);
             doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(20,20,20);
             doc.text(String(row.name), ML+13, y+4.5);
-            doc.text(fmt(row.amount), MR, y+4.5, {align:'right'});
+            doc.text(fmt(row.amount), TOT_CZK, y+4.5, {align:'right'});
             pActual(_aValT,y+4.5);
-            y+=RH+_ah; noteRow(_rn); drawSep(); y+=0.5;
+            y+=RH; noteRow(_rn); drawSep(); y+=0.5;
           } else if(row.subs){
             const tt=row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0);
             vanHdr(code, row.name, tt);
-            if(showActualPDF&&_aValT>0){doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(60,160,60);doc.text('ACT: '+Math.round(_aValT).toLocaleString('cs-CZ'),TOT_CZK,y-0.8,{align:'right'});}
+            if(showActualPDF&&_aValT>0){doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_aValT).toLocaleString('cs-CZ')+' CZK',TOT_ACT,y-3.5,{align:'right'});}
             if(_rn) noteRow(_rn);
             row.subs.forEach(([lbl,q,r,isAF])=>{if((isAF?r:q*r)===0)return;vanSub(lbl,q,r);});
           }
