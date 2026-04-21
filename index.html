@@ -31,7 +31,7 @@ body { font-family: 'DM Mono', 'Courier New', monospace; font-size: 12px; color:
 .cat-label { color: #fff; font-weight: 600; font-size: 11px; }
 .cat-total { color: #ff6b00; font-size: 11px; font-weight: 700; margin-right: 8px; }
 .cat-body { display: none; } .cat-body.open { display: block; }
-.sec-hdr { padding: 5px 14px 5px 13px; background: #1b2a38; color: #88b8d5; font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-left: 3px solid #3a8fc0; margin-top: 1px; }
+.sec-hdr { padding: 5px 14px 5px 13px; background: #1f1a14; color: #cc7a30; font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-left: 3px solid #ff6b00; margin-top: 1px; }
 .cat-toolbar { display: flex; gap: 6px; padding: 6px 10px; background: #f8f8f8; border-bottom: 1px solid #eee; align-items: center; }
 .tbtn { padding: 4px 9px; font-size: 10px; font-weight: 700; font-family: inherit; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; letter-spacing: 0.5px; }
 .tbtn:hover { background: #f0f0f0; }
@@ -1294,13 +1294,18 @@ function showCtx(e, items) {
     d.onclick = ev => { ev.stopPropagation(); hideCtx(); item.fn(); };
     menu.appendChild(d);
   });
-  // Position near cursor, then adjust to stay in viewport
-  let x = e.clientX, y = e.clientY;
-  menu.style.left = x + 'px'; menu.style.top = y + 'px';
+  // Use getBoundingClientRect + offsetX/Y — works correctly with html { zoom: 1.5 }
+  // (e.clientX/Y are in physical px, but position:fixed uses CSS px scaled by zoom)
+  const tRect = e.target.getBoundingClientRect();
+  menu.style.left = '0'; menu.style.top = '0';
   menu.style.display = 'block';
   const r = menu.getBoundingClientRect();
-  if (x + r.width > window.innerWidth)  x = window.innerWidth - r.width - 4;
-  if (y + r.height > window.innerHeight) y = window.innerHeight - r.height - 4;
+  let x = tRect.left + (e.offsetX || 0);
+  let y = tRect.top  + (e.offsetY || 0);
+  const vpW = document.documentElement.clientWidth;
+  const vpH = document.documentElement.clientHeight;
+  if (x + r.width  > vpW) x = vpW - r.width  - 4;
+  if (y + r.height > vpH) y = vpH - r.height - 4;
   if (x < 4) x = 4; if (y < 4) y = 4;
   menu.style.left = x + 'px'; menu.style.top = y + 'px';
 }
@@ -1907,7 +1912,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 18;
+const APP_BUILD = 20;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2545,8 +2550,10 @@ function renderCats() {
           }
         });
         html+='</tbody></table>';
+        // Add button after each section
+        if(si===_iSi) html+=`<div class="cat-toolbar"><button class="tbtn" onclick="addTalentItem('${cat.code}',${si})">+ Add Item</button><span class="ctx-hint">right-click for options</span></div>`;
+        else if(si===_sSi) html+=`<div class="cat-toolbar"><button class="tbtn" onclick="addTalentSubs('${cat.code}',${si})">+ Add Talent</button><span class="ctx-hint">right-click for options</span></div>`;
       });
-      html+=`<div class="cat-toolbar"><button class="tbtn" onclick="addTalentItem('${cat.code}',${_iSi})">+ Add Item</button><button class="tbtn" style="margin-left:4px" onclick="addTalentSubs('${cat.code}',${_sSi})">+ Add Talent</button><span class="ctx-hint">right-click for options</span></div>`;
 
     } else if(cat.type==='std'){
       html+=`<table><thead><tr><th style="width:24px"></th><th class="thl" style="width:160px">Item</th><th style="width:120px">Note</th><th style="width:55px">Qty</th><th style="width:88px">Rate</th><th style="width:100px">Total</th>${extraHeaders()}</tr></thead><tbody>`;
@@ -2588,7 +2595,7 @@ function addTalentItem(code,si){
 }
 function addTalentSubs(code,si){
   const cat=cats.find(c=>c.code===code);
-  cat.sections[si].rows.push({name:"New Talent",subs:[["Daily Fee",1,0],["Buyout Video",1,0],["Agency Fee 20%",1,0,true]]});
+  cat.sections[si].rows.push({name:"New Talent",subs:[["Daily Fee",1,0],["Buyout",1,0],["Overtime",0,0],["Agency Fee 20%",1,0,true]]});
   renderCats(); isDirty=true;
 }
 
