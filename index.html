@@ -343,6 +343,7 @@ body.locked .del-sub { display: none; }
     <div class="btn-drop-menu" id="drop-file-menu" style="left:0">
       <button onclick="closeDrop('drop-file');newProject()">✚ New</button>
       <button onclick="closeDrop('drop-file');loadProject()">📂 Open</button>
+      <button onclick="closeDrop('drop-file');showProjectsManager()">📋 Projects</button>
       <hr class="sep">
       <button onclick="closeDrop('drop-file');editRates()">📋 Rates</button>
       <hr class="sep">
@@ -484,7 +485,7 @@ body.locked .del-sub { display: none; }
     <div class="st-part"><span class="st-label">SUBTOTAL</span><span id="st-sub" style="color:#ccc;font-weight:600;font-size:16px">—</span></div>
     <div class="st-part"><span class="st-label">FEE</span><span id="st-fee" style="color:#888;font-size:14px">—</span></div>
     <div class="st-part"><span class="st-label">INS</span><span id="st-ins" style="color:#888;font-size:14px">—</span></div>
-    <div class="st-part" id="st-working-part" style="display:none"><span class="st-label" style="color:#4d4">W GRAND</span><span id="st-working" style="color:#4d4;font-weight:700;font-size:13px">—</span><span id="st-working-sub" style="color:#4d4;font-size:9px;opacity:0.7">—</span></div>
+    <div class="st-part" id="st-working-part" style="display:none"><span class="st-label" style="color:#4d4">W GRAND</span><span id="st-working" style="color:#4d4;font-weight:700;font-size:13px">—</span><span id="st-working-sub" style="color:#4d4;font-size:9px;opacity:0.7">—</span><span id="st-working-diff" style="font-size:10px;font-weight:700;margin-left:4px">—</span></div>
   <div class="st-part" id="st-actual-part" style="display:none"><span class="st-label" style="color:#6d6">A GRAND</span><span id="st-actual" style="color:#6d6;font-weight:700;font-size:13px">—</span><span id="st-actual-sub" style="color:#6d6;font-size:9px;opacity:0.7">—</span><span id="st-actual-diff" style="font-size:10px;font-weight:700;margin-left:4px">—</span></div>
   <div class="st-part" style="display:none"><span class="st-label" style="color:#ff9966">OVERCOST</span><span id="st-oc" style="color:#ff9966;font-size:11px">—</span></div>
   </div>
@@ -1466,12 +1467,60 @@ function setProjectState(projName) {
   if (window.location.pathname !== url) history.pushState({project:projName}, '', url);
 }
 
+async function showProjectsManager() {
+  if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
+  const ov=document.createElement('div');
+  ov.id='proj-mgr-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  const box=document.createElement('div');
+  box.style.cssText='background:#111;border:1px solid #333;border-radius:8px;padding:20px 24px;min-width:460px;max-height:80vh;overflow-y:auto;font-family:inherit;';
+  box.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><span style="color:#ff6b00;font-weight:700;letter-spacing:2px;font-size:11px">📋 PROJECTS</span><button onclick="document.getElementById('proj-mgr-ov').remove()" style="background:none;border:none;color:#555;font-size:18px;cursor:pointer;line-height:1">×</button></div><div id="proj-mgr-list" style="color:#888;font-size:11px">Loading…</div>`;
+  ov.appendChild(box); document.body.appendChild(ov);
+  try {
+    const entries=await dbxListFolder('/projects');
+    const projs=entries.filter(e=>e['.tag']==='folder').map(e=>e.name).sort();
+    const fileLists=await Promise.all(projs.map(p=>dbxListProjectFiles(p).catch(()=>[])));
+    let html='<table style="width:100%;border-collapse:collapse">';
+    html+='<tr style="border-bottom:1px solid #2a2a2a"><th style="text-align:left;padding:5px 6px;color:#555;font-size:9px;letter-spacing:1px">PROJECT</th><th style="text-align:center;padding:5px;color:#555;font-size:9px;letter-spacing:1px">VERSIONS</th><th style="padding:5px"></th></tr>';
+    projs.forEach((p,i)=>{
+      html+=`<tr id="pmr-${p}" style="border-bottom:1px solid #1a1a1a">
+        <td style="padding:7px 6px;color:#ccc;font-size:11px">${p}</td>
+        <td style="text-align:center;padding:7px;color:#888;font-size:11px">${fileLists[i].length}</td>
+        <td style="padding:7px;text-align:right" id="pmd-${p}"><button onclick="deleteProjectPrompt('${p}')" style="padding:2px 8px;font-size:9px;background:transparent;border:1px solid #553333;border-radius:3px;color:#aa4444;font-family:inherit;cursor:pointer">Delete</button></td>
+      </tr>`;
+    });
+    html+='</table>';
+    document.getElementById('proj-mgr-list').innerHTML=html;
+  } catch(e){document.getElementById('proj-mgr-list').textContent='Error: '+e.message;}
+}
+function deleteProjectPrompt(projName) {
+  const td=document.getElementById('pmd-'+projName);
+  if(!td)return;
+  td.innerHTML=`<span style="font-size:9px;color:#888">type "delete": </span><input id="del-inp-${projName}" type="text" style="width:55px;padding:2px 4px;font-size:9px;background:#1a0000;border:1px solid #553;border-radius:2px;color:#f88;font-family:inherit" placeholder="delete"> <button onclick="confirmDeleteProject('${projName}')" style="padding:2px 6px;font-size:9px;background:#3a0000;border:1px solid #aa3333;border-radius:2px;color:#f88;font-family:inherit;cursor:pointer">✓</button> <button onclick="deleteProjectPromptCancel('${projName}')" style="padding:2px 5px;font-size:9px;background:transparent;border:1px solid #333;border-radius:2px;color:#555;font-family:inherit;cursor:pointer">✗</button>`;
+}
+function deleteProjectPromptCancel(projName){const td=document.getElementById('pmd-'+projName);if(!td)return;td.innerHTML=`<button onclick="deleteProjectPrompt('${projName}')" style="padding:2px 8px;font-size:9px;background:transparent;border:1px solid #553333;border-radius:3px;color:#aa4444;font-family:inherit;cursor:pointer">Delete</button>`;}
+async function confirmDeleteProject(projName) {
+  const inp=document.getElementById('del-inp-'+projName);
+  if(!inp||inp.value.trim().toLowerCase()!=='delete'){alert('Type "delete" to confirm.');return;}
+  try {
+    await _dbxFetch('https://api.dropboxapi.com/2/files/delete_v2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:DBX_ROOT+'/projects/'+projName})});
+    if(currentProject===projName){currentProject=null;currentVersionFile=null;const vn=document.getElementById('ver-nav');if(vn)vn.style.display='none';}
+    document.getElementById('proj-mgr-ov')?.remove();
+    showProjectsManager();
+  } catch(e){alert('Delete failed: '+e.message);}
+}
 async function loadProject() {
   if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
   try {
     const entries = await dbxListFolder('/projects');
-    const projOrder = JSON.parse(localStorage.getItem('proj_order')||'{}');
-    const projects = entries.filter(e=>e['.tag']==='folder').map(e=>e.name).sort((a,b)=>(projOrder[b]||0)-(projOrder[a]||0));
+    let projects=[], projTimes={};
+    try {
+      const _r=await _dbxFetch('https://api.dropboxapi.com/2/files/list_folder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:DBX_ROOT+'/projects',recursive:true,limit:2000})});
+      if(_r.ok){const _all=(await _r.json()).entries||[];_all.filter(e=>e['.tag']==='file').forEach(e=>{const m=e.path_display.match(/\/projects\/([^/]+)\//i);if(m){const p=m[1],t=new Date(e.server_modified||0).getTime();if(!projTimes[p]||t>projTimes[p])projTimes[p]=t;}});projects=_all.filter(e=>e['.tag']==='folder'&&/\/projects\/[^/]+$/i.test(e.path_display)).map(e=>e.name);}
+    }catch(_e){}
+    if(!projects.length){const _fe=await dbxListFolder('/projects');projects=_fe.filter(e=>e['.tag']==='folder').map(e=>e.name);}
+    projects.sort((a,b)=>(projTimes[b]||0)-(projTimes[a]||0));
     if (!projects.length) { alert('No saved projects found.'); return; }
     let project = projects.length===1 ? projects[0] : await pickFromList('SELECT PROJECT', projects, p=>p);
     if (!project) return;
@@ -1834,7 +1883,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 15;
+const APP_BUILD = 16;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2565,6 +2614,8 @@ function updateSummaryBar(){
     document.getElementById('st-working').textContent=fmtK(_wGrand);
     const _wSub=document.getElementById('st-working-sub');
     if(_wSub)_wSub.textContent=fmtK(_wTot)+' +fee +ins';
+    const _wDiff=_wGrand-grand;const _wDiffEl=document.getElementById('st-working-diff');
+    if(_wDiffEl){_wDiffEl.textContent=(_wDiff>=0?'+':'')+fmtK(_wDiff);_wDiffEl.style.color=_wDiff>0?'#ff4444':_wDiff<0?'#44cc44':'#888';}
   }}
   const stAp=document.getElementById('st-actual-part');
   if(stAp){ stAp.style.display=actualMode?'flex':'none'; if(actualMode){
@@ -2707,6 +2758,8 @@ function exportPDF(){
   const altCurName = altName();
   const altCurRate = parseFloat(document.getElementById('alt_rate')?.value)||25;
   const fmtAltPDF = n => n>0 ? Math.round(n/altCurRate).toLocaleString('cs-CZ')+' '+altCurName : '';
+  // Actual mode in PDF
+  const showActualPDF = actualMode && Object.values(actualData).some(v=>typeof v==='number'&&v>0);
 
   // ── Layout constants ──────────────────────────────────────────────────────
   const PW=210, PH=297, ML=14, MR=196, CW=MR-ML;
@@ -2736,6 +2789,12 @@ function exportPDF(){
     if(!showAlt||!(val>0))return;
     doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(120,120,120);
     doc.text(fmtAltPDF(val),TOT_ALT,yy,{align:'right'});
+  }
+  // helper: print actual value in small green under/next to total
+  function pActual(aVal,yy){
+    if(!showActualPDF||!(aVal>0))return;
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(60,160,60);
+    doc.text('ACT: '+Math.round(aVal).toLocaleString('cs-CZ'),TOT_CZK,yy+3.2,{align:'right'});
   }
   // When alt enabled, shift CZK total column left to make room
   const TOT_CZK = showAlt ? MR-16 : MR;  // shifts CZK col left to fit alt
@@ -2813,9 +2872,10 @@ function exportPDF(){
   }
 
   // ── Crew 6-field row [name, note, pd, pr, sd, sr] ────────────────────────
-  function crewRow(code, name, noteText, pd, pr, sd, sr){
+  function crewRow(code, name, noteText, pd, pr, sd, sr, aVal=0){
     const tot=pd*pr+sd*sr;
-    chk(RH+(noteText?NH:0));
+    const _ah=showActualPDF&&aVal>0?3.2:0;
+    chk(RH+(noteText?NH:0)+_ah);
     doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0);
     doc.text(code, ML+1, y+4.5);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(20,20,20);
@@ -2827,14 +2887,15 @@ function exportPDF(){
     doc.text(sr?(fmtN(sr)+(showAlt?'':' CZK')):'—', C.SR, y+4.5, {align:'right'});
     doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(20,20,20);
     doc.text(tot>0?fmt(tot):'—', TOT_CZK, y+4.5, {align:'right'});
-    pAlt(tot,y+4.5);
-    y+=RH; noteRow(noteText); drawSep(); y+=0.5;
+    pAlt(tot,y+4.5); pActual(aVal,y+4.5);
+    y+=RH+_ah; noteRow(noteText); drawSep(); y+=0.5;
   }
 
   // ── Std row (4-el expense or std cat): [desc, note, qty, rate] ───────────
-  function stdRow(code, name, noteText, qty, rate){
+  function stdRow(code, name, noteText, qty, rate, aVal=0){
     const tot=qty*rate;
-    chk(RH+(noteText?NH:0));
+    const _ah=showActualPDF&&aVal>0?3.2:0;
+    chk(RH+(noteText?NH:0)+_ah);
     doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0);
     doc.text(code, ML+1, y+4.5);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(20,20,20);
@@ -2844,8 +2905,8 @@ function exportPDF(){
     doc.text(rate?(fmtN(rate)+(showAlt?'':' CZK')):'—', Q.RATE, y+4.5, {align:'right'});
     doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(20,20,20);
     doc.text(tot>0?fmt(tot):'—', TOT_CZK, y+4.5, {align:'right'});
-    pAlt(tot,y+4.5);
-    y+=RH; noteRow(noteText); drawSep(); y+=0.5;
+    pAlt(tot,y+4.5); pActual(aVal,y+4.5);
+    y+=RH+_ah; noteRow(noteText); drawSep(); y+=0.5;
   }
 
   // ── OT row (3-el): [name, qty, rate] ─────────────────────────────────────
@@ -2961,6 +3022,7 @@ function exportPDF(){
     doc.text(cat.label.toUpperCase(), ML+13, y+4.5);
     doc.setFont('helvetica','bold'); doc.text(fmt(tot), TOT_CZK, y+4.5, {align:'right'});
     if(showAlt&&tot>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text(fmtAltPDF(tot), TOT_ALT, y+4.5, {align:'right'}); }
+    if(showActualPDF){const _acat=getCatActual(cat);if(_acat>0){doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(60,160,60);doc.text('ACT: '+Math.round(_acat).toLocaleString('cs-CZ'),TOT_CZK,y+7.8,{align:'right'});y+=3.5;}}
     y+=RH; drawSep(); y+=0.5;
   });
   y+=4;
@@ -3020,25 +3082,27 @@ function exportPDF(){
           } else if(row.length===6){
             if(row[2]*row[3]+row[4]*row[5]===0) return;
             const code=cat.code+String(++n).padStart(2,'0');
-            crewRow(code, row[0], row[1]||_rn, row[2], row[3], row[4], row[5]);
+            crewRow(code, row[0], row[1]||_rn, row[2], row[3], row[4], row[5], actualData[crewKey(cat.code,si,ri)]||0);
           } else if(row.length===4&&typeof row[1]==='number'){
             // triple row: name,cnt,qty,rate – note from rowNotes
             if(row[1]*row[2]*row[3]===0) return;
             const code=cat.code+String(++n).padStart(2,'0');
             const tot=row[1]*row[2]*row[3];
-            chk(RH+(_rn?NH:0));
+            const _aVal=actualData[crewKey(cat.code,si,ri)]||0;
+            const _ah=showActualPDF&&_aVal>0?3.2:0;
+            chk(RH+(_rn?NH:0)+_ah);
             doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0);
             doc.text(code, ML+1, y+4.5);
             doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(20,20,20);
             doc.text(String(row[0]), ML+13, y+4.5);
             doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(20,20,20);
             doc.text(tot>0?fmt(tot):'—', TOT_CZK, y+4.5, {align:'right'});
-            pAlt(tot,y+4.5);
-            y+=RH; noteRow(_rn); drawSep(); y+=0.5;
+            pAlt(tot,y+4.5); pActual(_aVal,y+4.5);
+            y+=RH+_ah; noteRow(_rn); drawSep(); y+=0.5;
           } else if(row.length===4){
             if(row[2]*row[3]===0) return;
             const code=cat.code+String(++n).padStart(2,'0');
-            stdRow(code, row[0], row[1], row[2], row[3]);
+            stdRow(code, row[0], row[1], row[2], row[3], actualData[crewKey(cat.code,si,ri)]||0);
           }
         });
       });
@@ -3049,7 +3113,7 @@ function exportPDF(){
       cat.rows.forEach(([desc,noteText,qty,rate],ri)=>{
         if(qty*rate===0) return;
         const code=cat.code+String(ri+1).padStart(2,'0');
-        stdRow(code, desc, noteText, qty, rate);
+        stdRow(code, desc, noteText, qty, rate, actualData[stdKey(cat.code,ri)]||0);
       });
       catTotRow(cat.code, tot);
 
@@ -3082,19 +3146,23 @@ function exportPDF(){
           if(_rt===0) return;
           const code=cat.code+String(++n).padStart(2,'0');
           const _rn=rowNotes[crewKey(cat.code,si,ri)]||'';
+          const _aKey=crewKey(cat.code,si,ri);const _aValT=actualData[_aKey]||0;
           if(row.qty!==undefined){
-            stdRow(code, row.name, _rn, row.qty, row.rate);
+            stdRow(code, row.name, _rn, row.qty, row.rate, _aValT);
           } else if(row.amount!==undefined){
-            chk(RH);
+            const _ah=showActualPDF&&_aValT>0?3.2:0;
+            chk(RH+_ah);
             doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0);
             doc.text(code, ML+1, y+4.5);
             doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(20,20,20);
             doc.text(String(row.name), ML+13, y+4.5);
             doc.text(fmt(row.amount), MR, y+4.5, {align:'right'});
-            y+=RH; noteRow(_rn); drawSep(); y+=0.5;
+            pActual(_aValT,y+4.5);
+            y+=RH+_ah; noteRow(_rn); drawSep(); y+=0.5;
           } else if(row.subs){
             const tt=row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0);
             vanHdr(code, row.name, tt);
+            if(showActualPDF&&_aValT>0){doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(60,160,60);doc.text('ACT: '+Math.round(_aValT).toLocaleString('cs-CZ'),TOT_CZK,y-0.8,{align:'right'});}
             if(_rn) noteRow(_rn);
             row.subs.forEach(([lbl,q,r,isAF])=>{if((isAF?r:q*r)===0)return;vanSub(lbl,q,r);});
           }
