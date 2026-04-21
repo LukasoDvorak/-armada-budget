@@ -485,7 +485,7 @@ body.locked .del-sub { display: none; }
     <div class="st-part"><span class="st-label">FEE</span><span id="st-fee" style="color:#888;font-size:14px">—</span></div>
     <div class="st-part"><span class="st-label">INS</span><span id="st-ins" style="color:#888;font-size:14px">—</span></div>
     <div class="st-part" id="st-working-part" style="display:none"><span class="st-label" style="color:#4d4">W GRAND</span><span id="st-working" style="color:#4d4;font-weight:700;font-size:13px">—</span><span id="st-working-sub" style="color:#4d4;font-size:9px;opacity:0.7">—</span></div>
-  <div class="st-part" id="st-actual-part" style="display:none"><span class="st-label" style="color:#6d6">A GRAND</span><span id="st-actual" style="color:#6d6;font-weight:700;font-size:13px">—</span><span id="st-actual-sub" style="color:#6d6;font-size:9px;opacity:0.7">—</span></div>
+  <div class="st-part" id="st-actual-part" style="display:none"><span class="st-label" style="color:#6d6">A GRAND</span><span id="st-actual" style="color:#6d6;font-weight:700;font-size:13px">—</span><span id="st-actual-sub" style="color:#6d6;font-size:9px;opacity:0.7">—</span><span id="st-actual-diff" style="font-size:10px;font-weight:700;margin-left:4px">—</span></div>
   <div class="st-part" style="display:none"><span class="st-label" style="color:#ff9966">OVERCOST</span><span id="st-oc" style="color:#ff9966;font-size:11px">—</span></div>
   </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end">
@@ -779,7 +779,7 @@ function getCatWorking(cat) { const p=cat.code+'|'; return Object.entries(workin
     if(!inp) return;
     const nc=inp.closest&&inp.closest('.nc'); if(!nc) return;
     const d=nc.querySelector('.nc-d'); if(!d) return;
-    const v=parseFloat(inp.value)||0; d.textContent=v?fmt(v):'';
+    const v=parseFloat(inp.value)||0; d.textContent=v?fmt(v):''; if(inp.classList.contains('working-inp'))d.style.color=v?'#ff6b00':'';
   };
 
   // ── postRenderNav: stamp .td-lbl on label cells after render ──
@@ -1470,7 +1470,8 @@ async function loadProject() {
   if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
   try {
     const entries = await dbxListFolder('/projects');
-    const projects = entries.filter(e=>e['.tag']==='folder').map(e=>e.name).sort();
+    const projOrder = JSON.parse(localStorage.getItem('proj_order')||'{}');
+    const projects = entries.filter(e=>e['.tag']==='folder').map(e=>e.name).sort((a,b)=>(projOrder[b]||0)-(projOrder[a]||0));
     if (!projects.length) { alert('No saved projects found.'); return; }
     let project = projects.length===1 ? projects[0] : await pickFromList('SELECT PROJECT', projects, p=>p);
     if (!project) return;
@@ -1510,7 +1511,7 @@ async function saveData(checkpoint=false) {
     // Single write — autosave updates top-level data, checkpoint also grows _snapshots
     const vp = { ...payload, _version:currentVersionFile.replace(/_v(\d+)\.json$/,'v$1'), _savedAt:new Date().toISOString(), _snapshots:currentSnapshots };
     await dbxUpload('/projects/'+projName+'/'+currentVersionFile, vp);
-    localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
+    localStorage.setItem('dbx_latest_project', projName); const _po=JSON.parse(localStorage.getItem('proj_order')||'{}');_po[projName]=Date.now();localStorage.setItem('proj_order',JSON.stringify(_po)); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     setProjectState(projName);
     if(checkpoint){
       setStatus('saved ✓ '+new Date().toLocaleTimeString('en-GB'));
@@ -1683,7 +1684,7 @@ async function saveAsProject() {
     const vp = { ...payload, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
     currentSnapshots = [];
     await dbxUpload('/projects/'+projName+'/'+projName+'_v1.json', vp);
-    localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
+    localStorage.setItem('dbx_latest_project', projName); const _po=JSON.parse(localStorage.getItem('proj_order')||'{}');_po[projName]=Date.now();localStorage.setItem('proj_order',JSON.stringify(_po)); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     currentVersionFile = projName+'_v1.json';
     applyData(payload); exitRatesMode(); setProjectState(projName); isDirty=false; versionIndex=0;
     await loadVersionList(projName); setStatus('saved as '+projName+' ✓');
@@ -1732,7 +1733,7 @@ async function newProjectFromRates() {
     const vp = { ...newData, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
     currentSnapshots = [];
     await dbxUpload('/projects/'+projName+'/'+projName+'_v1.json', vp);
-    localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
+    localStorage.setItem('dbx_latest_project', projName); const _po=JSON.parse(localStorage.getItem('proj_order')||'{}');_po[projName]=Date.now();localStorage.setItem('proj_order',JSON.stringify(_po)); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     currentVersionFile = projName+'_v1.json';
     applyData(newData); setProjectState(projName); setStatus('new project ✓'); versionIndex=0; isDirty=false; await loadVersionList(projName);
   } catch(e) { alert('Error:\n'+e.message); }
@@ -1816,7 +1817,7 @@ async function importProject() {
         const vp = { ...cleanData, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
         currentSnapshots = [];
         await dbxUpload('/projects/'+projName+'/'+projName+'_v1.json', vp);
-        localStorage.setItem('dbx_latest_project', projName); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
+        localStorage.setItem('dbx_latest_project', projName); const _po=JSON.parse(localStorage.getItem('proj_order')||'{}');_po[projName]=Date.now();localStorage.setItem('proj_order',JSON.stringify(_po)); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
         currentVersionFile = projName+'_v1.json';
         applyData(cleanData); exitRatesMode(); setProjectState(projName); isDirty=false;
         versionIndex=0; await loadVersionList(projName);
@@ -1833,7 +1834,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 14;
+const APP_BUILD = 15;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2219,8 +2220,8 @@ function extraCols(tot, key){
   if(workingMode){
     const inv=invoiceChecked[key];
     const wVal=workingData[key]||0;
-    const wBg=wVal===0?'':(wVal<tot?'background:#d0f0d0':wVal>tot?'background:#ffd0d0':'background:#fff');
-    h+=`<td class="td-work" style="${wBg}"><div class="td-work-inner">${(()=>{const _d=wVal?fmt(wVal):'';return `<div class="nc" tabindex="0"><span class="nc-d">${_d}</span><input class="nc-i working-inp" type="number" tabindex="-1" value="${wVal}" oninput="setWorking('${key}',this.value);ncUpdDisp(this)"></div>`;})()}<input type="checkbox" class="inv-chk" title="Invoice received" ${inv?'checked':''} onchange="toggleInvoice('${key}')"></div></td>`;
+    // NOTE: b15 — working cells: no background colors, orange text. May revert to colored backgrounds if user prefers.
+    h+=`<td class="td-work"><div class="td-work-inner">${(()=>{const _d=wVal?fmt(wVal):'';return `<div class="nc" tabindex="0"><span class="nc-d" style="color:${wVal?'#ff6b00':'inherit'}">${_d}</span><input class="nc-i working-inp" type="number" tabindex="-1" value="${wVal}" oninput="setWorking('${key}',this.value);ncUpdDisp(this)"></div>`;})()}<input type="checkbox" class="inv-chk" title="Invoice received" ${inv?'checked':''} onchange="toggleInvoice('${key}')"></div></td>`;
   }
   if(actualMode){
     const aVal=actualData[key]||0;
@@ -2575,6 +2576,9 @@ function updateSummaryBar(){
     document.getElementById('st-actual').textContent=fmtK(_aGrand);
     const _aSub=document.getElementById('st-actual-sub');
     if(_aSub)_aSub.textContent=fmtK(_aTot)+' +fee +ins';
+    const _aDiff=_aGrand-grand;
+    const _aDiffEl=document.getElementById('st-actual-diff');
+    if(_aDiffEl){_aDiffEl.textContent=(_aDiff>=0?'+':'')+fmtK(_aDiff);_aDiffEl.style.color=_aDiff>0?'#ff4444':_aDiff<0?'#44cc44':'#888';}
   }}
 
   // Working
@@ -2656,7 +2660,15 @@ function showTab(tab,btn){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+tab).classList.add('active');
   if(btn)btn.classList.add('active');
+  else document.querySelector(`.tab[onclick*="${tab}"]`)?.classList.add('active');
   if(tab==='summary')renderSummary();
+}
+function goToCat(code){
+  showTab('budget');
+  const body=document.getElementById('body-'+code);
+  const arr=document.getElementById('arr-'+code);
+  if(body&&!body.classList.contains('open')){body.classList.add('open');if(arr)arr.textContent='▲';}
+  setTimeout(()=>{const el=document.getElementById('body-'+code)||document.querySelector(`[data-code="${code}"]`);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);
 }
 function toggleAlt(){ isDirty=true; renderCats(); renderSummary(); }
 function renderSummary(){
@@ -2665,7 +2677,7 @@ function renderSummary(){
   let html='';
   cats.forEach((cat,i)=>{
     const tot=catTotal(cat);
-    html+=`<tr class="${i%2===0?'even':''}"><td style="padding:4px 7px"><span class="item-code">${cat.code}</span>${cat.label}</td><td class="tdr" style="padding:4px 7px;font-weight:600">${fmt(tot)}</td>${show?`<td class="tdr" style="padding:4px 7px;color:#999;font-size:10px">${fmtAlt(tot)}</td>`:''}</tr>`;
+    html+=`<tr class="${i%2===0?'even':''}" style="cursor:pointer" title="Double-click to open in Budget" ondblclick="goToCat('${cat.code}')"><td style="padding:4px 7px"><span class="item-code">${cat.code}</span>${cat.label}</td><td class="tdr" style="padding:4px 7px;font-weight:600">${fmt(tot)}</td>${show?`<td class="tdr" style="padding:4px 7px;color:#999;font-size:10px">${fmtAlt(tot)}</td>`:''}</tr>`;
   });
   document.getElementById('sum-tbody').innerHTML=html;
   updateSummaryBar();
