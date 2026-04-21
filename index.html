@@ -1833,7 +1833,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 13;
+const APP_BUILD = 14;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2942,6 +2942,7 @@ function exportPDF(){
   // Category rows
   cats.forEach(cat=>{
     const tot=catTotal(cat);
+    if(tot===0) return;
     doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,107,0);
     doc.text(cat.code, ML+2, y+4.5);
     doc.setTextColor(20,20,20); doc.setFont('helvetica','normal');
@@ -2977,6 +2978,7 @@ function exportPDF(){
 
   cats.forEach(cat=>{
     const tot=catTotal(cat);
+    if(tot===0) return;
 
     if(cat.type==='crew'){
       let n=0; // item counter within this cat
@@ -2993,18 +2995,23 @@ function exportPDF(){
           if(row.van){
             // Van object inside a crew section
             const vt=row.subs.reduce((s,[,q,r])=>s+q*r,0);
+            if(vt===0) return;
             vanHdr('', row.van, vt);
             if(_rn) noteRow(_rn);
-            row.subs.forEach(([lbl,q,r])=>vanSub(lbl,q,r));
+            row.subs.forEach(([lbl,q,r])=>{if(q*r===0)return;vanSub(lbl,q,r);});
           } else if(isOT){
+            const _ot=row.length===4?row[2]*row[3]:row[1]*row[2];
+            if(_ot===0) return;
             if(row.length===4) otRow(row[0]+' (×'+row[1]+')', row[2], row[3]);
             else               otRow(row[0], row[1], row[2]);
             if(_rn) noteRow(_rn);
           } else if(row.length===6){
+            if(row[2]*row[3]+row[4]*row[5]===0) return;
             const code=cat.code+String(++n).padStart(2,'0');
             crewRow(code, row[0], row[1]||_rn, row[2], row[3], row[4], row[5]);
           } else if(row.length===4&&typeof row[1]==='number'){
             // triple row: name,cnt,qty,rate – note from rowNotes
+            if(row[1]*row[2]*row[3]===0) return;
             const code=cat.code+String(++n).padStart(2,'0');
             const tot=row[1]*row[2]*row[3];
             chk(RH+(_rn?NH:0));
@@ -3017,6 +3024,7 @@ function exportPDF(){
             pAlt(tot,y+4.5);
             y+=RH; noteRow(_rn); drawSep(); y+=0.5;
           } else if(row.length===4){
+            if(row[2]*row[3]===0) return;
             const code=cat.code+String(++n).padStart(2,'0');
             stdRow(code, row[0], row[1], row[2], row[3]);
           }
@@ -3027,6 +3035,7 @@ function exportPDF(){
     } else if(cat.type==='std'){
       catBar(cat.code, cat.label, 'qty');
       cat.rows.forEach(([desc,noteText,qty,rate],ri)=>{
+        if(qty*rate===0) return;
         const code=cat.code+String(ri+1).padStart(2,'0');
         stdRow(code, desc, noteText, qty, rate);
       });
@@ -3037,10 +3046,12 @@ function exportPDF(){
       let n=0;
       cat.vans.forEach((van,vi)=>{
         const vt=van.subs.reduce((s,[,q,r])=>s+q*r,0);
+        if(vt===0) return;
         const _vn=rowNotes[vanKey(cat.code,vi)]||'';
         vanHdr(cat.code+String(++n).padStart(2,'0'), van.name, vt);
         if(_vn) noteRow(_vn);
         van.subs.forEach(([lbl,q,r],si)=>{
+          if(q*r===0) return;
           vanSub(lbl,q,r);
           const _vs=rowNotes[vtsubKey(cat.code,vi,si)]||'';
           if(_vs){ doc.setFont('helvetica','italic'); doc.setFontSize(6.5); doc.setTextColor(130,130,130); const _ls=doc.splitTextToSize(_vs,70); doc.text(_ls,ML+18,y+2.5); y+=_ls.length*3.5; }
@@ -3055,6 +3066,8 @@ function exportPDF(){
         else if(sec.name) secBar(sec.name);
 
         sec.rows.forEach((row,ri)=>{
+          const _rt=row.qty!==undefined?row.qty*row.rate:row.amount!==undefined?row.amount:row.subs?row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0):0;
+          if(_rt===0) return;
           const code=cat.code+String(++n).padStart(2,'0');
           const _rn=rowNotes[crewKey(cat.code,si,ri)]||'';
           if(row.qty!==undefined){
@@ -3068,10 +3081,10 @@ function exportPDF(){
             doc.text(fmt(row.amount), MR, y+4.5, {align:'right'});
             y+=RH; noteRow(_rn); drawSep(); y+=0.5;
           } else if(row.subs){
-            const tt=row.subs.reduce((s,[,q,r])=>s+q*r,0);
+            const tt=row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0);
             vanHdr(code, row.name, tt);
             if(_rn) noteRow(_rn);
-            row.subs.forEach(([lbl,q,r])=>vanSub(lbl,q,r));
+            row.subs.forEach(([lbl,q,r,isAF])=>{if((isAF?r:q*r)===0)return;vanSub(lbl,q,r);});
           }
         });
       });
