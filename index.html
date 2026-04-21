@@ -156,7 +156,6 @@ body { padding-bottom: 44px; } /* space for sticky bar */
 /* Lock mode */
 body.locked input[type=number]:not(.working-inp):not(.actual-inp), body.locked input[type=text]:not(.working-inp):not(.actual-inp), body.locked textarea { pointer-events: none; background: #f8f8f8 !important; color: #999 !important; border-color: #eee !important; }
 body.locked .editable { pointer-events: none; }
-body.locked .tbtn, body.locked .topbtn:not(#btn-lock):not(#btn-save):not(#btn-working):not(#btn-actual) { opacity: 0.4; pointer-events: none; }
 body.locked .del-sub { display: none; }
 /* Context menu */
 #ctx-menu { position: fixed; background: #1a1a1a; border: 1px solid #333; border-radius: 5px; padding: 4px 0; z-index: 9999; min-width: 168px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); font-family: 'DM Mono','Courier New',monospace; display: none; }
@@ -1912,7 +1911,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 22;
+const APP_BUILD = 23;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
