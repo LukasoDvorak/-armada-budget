@@ -1485,14 +1485,36 @@ async function showProjectsManager() {
     html+='<tr style="border-bottom:1px solid #2a2a2a"><th style="text-align:left;padding:5px 6px;color:#555;font-size:9px;letter-spacing:1px">PROJECT</th><th style="text-align:center;padding:5px;color:#555;font-size:9px;letter-spacing:1px">VERSIONS</th><th style="padding:5px"></th></tr>';
     projs.forEach((p,i)=>{
       html+=`<tr id="pmr-${p}" style="border-bottom:1px solid #1a1a1a">
-        <td style="padding:7px 6px;color:#ccc;font-size:11px">${p}</td>
+        <td style="padding:7px 6px;color:#ccc;font-size:11px;cursor:pointer" title="Click to open" onclick="document.getElementById('proj-mgr-ov').remove();loadProjectByName('${p}')">${p}</td>
         <td style="text-align:center;padding:7px;color:#888;font-size:11px">${fileLists[i].length}</td>
-        <td style="padding:7px;text-align:right" id="pmd-${p}"><button onclick="deleteProjectPrompt('${p}')" style="padding:2px 8px;font-size:9px;background:transparent;border:1px solid #553333;border-radius:3px;color:#aa4444;font-family:inherit;cursor:pointer">Delete</button></td>
+        <td style="padding:7px;text-align:right;display:flex;gap:5px;justify-content:flex-end;align-items:center" id="pmd-${p}"><button onclick="renameProjectPrompt('${p}')" style="padding:2px 8px;font-size:9px;background:transparent;border:1px solid #334455;border-radius:3px;color:#6699aa;font-family:inherit;cursor:pointer">Rename</button><button onclick="deleteProjectPrompt('${p}')" style="padding:2px 8px;font-size:9px;background:transparent;border:1px solid #553333;border-radius:3px;color:#aa4444;font-family:inherit;cursor:pointer">Delete</button></td>
       </tr>`;
     });
     html+='</table>';
     document.getElementById('proj-mgr-list').innerHTML=html;
   } catch(e){document.getElementById('proj-mgr-list').textContent='Error: '+e.message;}
+}
+function renameProjectPrompt(projName) {
+  const td=document.getElementById('pmd-'+projName);
+  if(!td)return;
+  td.innerHTML=`<input id="ren-inp-${projName}" type="text" value="${projName}" style="width:160px;padding:3px 6px;font-size:10px;background:#0a1520;border:1px solid #336;border-radius:3px;color:#8af;font-family:inherit"> <button onclick="confirmRenameProject('${projName}')" style="padding:2px 6px;font-size:9px;background:#0a2030;border:1px solid #336;border-radius:2px;color:#8af;font-family:inherit;cursor:pointer">✓</button> <button onclick="renameProjectCancel('${projName}')" style="padding:2px 5px;font-size:9px;background:transparent;border:1px solid #333;border-radius:2px;color:#555;font-family:inherit;cursor:pointer">✗</button>`;
+  const inp=document.getElementById('ren-inp-'+projName);if(inp){inp.select();inp.focus();}
+}
+function renameProjectCancel(projName){
+  const td=document.getElementById('pmd-'+projName);if(!td)return;
+  td.innerHTML=`<button onclick="renameProjectPrompt('${projName}')" style="padding:2px 8px;font-size:9px;background:transparent;border:1px solid #334455;border-radius:3px;color:#6699aa;font-family:inherit;cursor:pointer">Rename</button><button onclick="deleteProjectPrompt('${projName}')" style="padding:2px 8px;font-size:9px;background:transparent;border:1px solid #553333;border-radius:3px;color:#aa4444;font-family:inherit;cursor:pointer">Delete</button>`;
+}
+async function confirmRenameProject(projName) {
+  const inp=document.getElementById('ren-inp-'+projName);
+  if(!inp)return;
+  const newName=inp.value.trim().replace(/[^a-zA-Z0-9_\-]/g,'_');
+  if(!newName||newName===projName){renameProjectCancel(projName);return;}
+  try {
+    await _dbxFetch('https://api.dropboxapi.com/2/files/move_v2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from_path:DBX_ROOT+'/projects/'+projName,to_path:DBX_ROOT+'/projects/'+newName,autorename:false})});
+    if(currentProject===projName){currentProject=newName;const po=JSON.parse(localStorage.getItem('proj_order')||'{}');if(po[projName]){po[newName]=po[projName];delete po[projName];localStorage.setItem('proj_order',JSON.stringify(po));}localStorage.setItem('dbx_latest_project',newName);}
+    document.getElementById('proj-mgr-ov')?.remove();
+    showProjectsManager();
+  } catch(e){alert('Rename failed: '+e.message);}
 }
 function deleteProjectPrompt(projName) {
   const td=document.getElementById('pmd-'+projName);
@@ -1883,7 +1905,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 16;
+const APP_BUILD = 17;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
