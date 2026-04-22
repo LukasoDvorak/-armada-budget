@@ -1911,7 +1911,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 23;
+const APP_BUILD = 24;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2796,9 +2796,10 @@ function exportPDF(){
   // ── Layout constants ──────────────────────────────────────────────────────
   const PW=210, PH=297, ML=14, MR=196, CW=MR-ML;
   // Crew columns — compress SR/SD when alt currency shown
-  const C = {PD:112, PR:showAlt?132:136, SD:showAlt?149:156, SR:showAlt?164:(showActualPDF?168:179)};
-  // Std / qty columns
-  const Q = {QTY:144, RATE:showAlt?161:(showActualPDF?168:173)};
+  // Compress columns the same way for alt and/or actual — each extra column shifts CZK 16mm left
+  const _compress = showAlt || showActualPDF;
+  const C = {PD:112, PR:_compress?132:136, SD:_compress?149:156, SR:_compress?164:179};
+  const Q = {QTY:144, RATE:_compress?161:173};
   // Row heights
   const RH=6.5;   // standard row
   const SH=5;     // van sub-row
@@ -2813,6 +2814,11 @@ function exportPDF(){
   const fee  = isFlatFee ? (parseFloat(g('fee-flat-amt'))||0) : Math.round(feeBase()*feePct/100);
   const ins  = isInsFlat ? (parseFloat(g('ins-flat-amt'))||0) : Math.round(subTot*insPct/100);
   const grand = subTot+fee+ins;
+  // Actual totals
+  const actSubTot = showActualPDF ? Object.values(actualData).reduce((s,v)=>s+(typeof v==='number'?v:0),0) : 0;
+  const actFee    = showActualPDF ? (isFlatFee ? fee : Math.round(actSubTot*feePct/100)) : 0;
+  const actIns    = showActualPDF ? (isInsFlat ? ins : Math.round(actSubTot*insPct/100)) : 0;
+  const actGrand  = actSubTot + actFee + actIns;
 
   const fmt  = n => n>0 ? Math.round(n).toLocaleString('cs-CZ')+' CZK' : '—';
   const fmtN = n => n>0 ? Math.round(n).toLocaleString('cs-CZ') : '—';
@@ -2828,10 +2834,10 @@ function exportPDF(){
     doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);
     doc.text(Math.round(aVal).toLocaleString('cs-CZ')+' CZK',TOT_ACT,yy,{align:'right'});
   }
-  // Column positions — shift left when alt and/or actual enabled
+  // Column positions: each extra column (alt, actual) shifts CZK 16mm left, actual at far right
   const TOT_ACT = showActualPDF ? MR : null;
-  const TOT_CZK = showActualPDF ? (showAlt ? MR-34 : MR-20) : (showAlt ? MR-16 : MR);
-  const TOT_ALT = showActualPDF ? MR-20 : MR;
+  const TOT_ALT = showAlt ? (showActualPDF ? MR-16 : MR) : null;
+  const TOT_CZK = MR - (showAlt?16:0) - (showActualPDF?16:0);
 
   let y=0, _pg=1;
 
@@ -2915,9 +2921,9 @@ function exportPDF(){
     doc.text(String(name), ML+13, y+4.5);
     doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(55,55,55);
     doc.text(pd?fmtN(pd):'—', C.PD, y+4.5, {align:'right'});
-    doc.text(pr?(fmtN(pr)+(showAlt?'':' CZK')):'—', C.PR, y+4.5, {align:'right'});
+    doc.text(pr?(fmtN(pr)+(showAlt||showActualPDF?'':' CZK')):'—', C.PR, y+4.5, {align:'right'});
     doc.text(sd?fmtN(sd):'—', C.SD, y+4.5, {align:'right'});
-    doc.text(sr?(fmtN(sr)+(showAlt?'':' CZK')):'—', C.SR, y+4.5, {align:'right'});
+    doc.text(sr?(fmtN(sr)+(showAlt||showActualPDF?'':' CZK')):'—', C.SR, y+4.5, {align:'right'});
     doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(20,20,20);
     doc.text(tot>0?fmt(tot):'—', TOT_CZK, y+4.5, {align:'right'});
     pAlt(tot,y+4.5); pActual(aVal,y+4.5);
@@ -2934,7 +2940,7 @@ function exportPDF(){
     doc.text(String(name), ML+13, y+4.5);
     doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(55,55,55);
     doc.text(qty?fmtN(qty):'—', Q.QTY, y+4.5, {align:'right'});
-    doc.text(rate?(fmtN(rate)+(showAlt?'':' CZK')):'—', Q.RATE, y+4.5, {align:'right'});
+    doc.text(rate?(fmtN(rate)+(showAlt||showActualPDF?'':' CZK')):'—', Q.RATE, y+4.5, {align:'right'});
     doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(20,20,20);
     doc.text(tot>0?fmt(tot):'—', TOT_CZK, y+4.5, {align:'right'});
     pAlt(tot,y+4.5); pActual(aVal,y+4.5);
@@ -2948,7 +2954,7 @@ function exportPDF(){
     doc.text(String(name), ML+3, y+4.5);
     doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(55,55,55);
     doc.text(qty?fmtN(qty):'—', Q.QTY, y+4.5, {align:'right'});
-    doc.text(rate?(fmtN(rate)+(showAlt?'':' CZK')):'—', Q.RATE, y+4.5, {align:'right'});
+    doc.text(rate?(fmtN(rate)+(showAlt||showActualPDF?'':' CZK')):'—', Q.RATE, y+4.5, {align:'right'});
     doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(20,20,20);
     doc.text(qty*rate>0?fmt(qty*rate):'—', TOT_CZK, y+4.5, {align:'right'});
     pAlt(qty*rate,y+4.5);
@@ -2973,7 +2979,7 @@ function exportPDF(){
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(85,85,85);
     doc.text(label, ML+17, y+3.5);
     doc.text(qty?fmtN(qty):'—', Q.QTY, y+3.5, {align:'right'});
-    doc.text(rate?(fmtN(rate)+(showAlt?'':' CZK')):'—', Q.RATE, y+3.5, {align:'right'});
+    doc.text(rate?(fmtN(rate)+(showAlt||showActualPDF?'':' CZK')):'—', Q.RATE, y+3.5, {align:'right'});
     doc.text(qty*rate>0?fmt(qty*rate):'—', TOT_CZK, y+3.5, {align:'right'});
     pAlt(qty*rate,y+3.5);
     doc.setDrawColor(225,225,225); doc.setLineWidth(0.1); doc.line(ML+16,y+SH,MR,y+SH);
@@ -3062,21 +3068,23 @@ function exportPDF(){
   doc.setDrawColor(130,130,130); doc.setLineWidth(0.4); doc.line(ML,y,MR,y); y+=7;
 
   // Cover totals block
-  function drawTotalLine(label, val, isLast){
+  function drawTotalLine(label, val, actVal, isLast){
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
     doc.text(label, ML, y);
     doc.setFont('helvetica','bold'); doc.text(fmt(val), TOT_CZK, y, {align:'right'});
     if(showAlt&&val>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(130,130,130); doc.text(fmtAltPDF(val), TOT_ALT, y, {align:'right'}); }
+    if(showActualPDF&&actVal>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,107,0); doc.text(fmt(actVal), TOT_ACT, y, {align:'right'}); }
     y+=isLast?7:6.5;
   }
-  drawTotalLine('Sub-Total Direct Costs', subTot);
-  drawTotalLine('Production Fee', fee);
-  drawTotalLine('Insurance', ins, true);
+  drawTotalLine('Sub-Total Direct Costs', subTot, actSubTot);
+  drawTotalLine('Production Fee', fee, actFee);
+  drawTotalLine('Insurance', ins, actIns, true);
   doc.setFillColor(18,18,18); doc.rect(ML,y,CW,9,'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(255,107,0);
   doc.text('GRAND TOTAL WITHOUT VAT', ML+2, y+6);
   doc.text(fmt(grand), TOT_CZK, y+6, {align:'right'});
   if(showAlt){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,150,100); doc.text(fmtAltPDF(grand), TOT_ALT, y+6, {align:'right'}); }
+  if(showActualPDF&&actGrand>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(255,107,0); doc.text(fmt(actGrand), TOT_ACT, y+6, {align:'right'}); }
 
   // ─────────────────────────────────────────────────────────────────────────
   // ── DETAIL PAGES (flowing — no forced breaks per category) ────────────────
@@ -3206,11 +3214,12 @@ function exportPDF(){
   // ── FINAL SUMMARY ─────────────────────────────────────────────────────────
   chk(52);
   doc.setDrawColor(170,170,170); doc.setLineWidth(0.3); doc.line(ML,y,MR,y); y+=7;
-  [['Sub-Total Direct Costs',subTot],['Production Fee',fee],['Insurance',ins]].forEach(([lbl,val])=>{
+  [[`Sub-Total Direct Costs`,subTot,actSubTot],[`Production Fee`,fee,actFee],[`Insurance`,ins,actIns]].forEach(([lbl,val,actVal])=>{
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
     doc.text(lbl, ML, y);
     doc.setFont('helvetica','bold'); doc.text(fmt(val), TOT_CZK, y, {align:'right'});
     if(showAlt&&val>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(130,130,130); doc.text(fmtAltPDF(val), TOT_ALT, y, {align:'right'}); }
+    if(showActualPDF&&actVal>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,107,0); doc.text(fmt(actVal), TOT_ACT, y, {align:'right'}); }
     y+=7;
   });
   doc.setFillColor(18,18,18); doc.rect(ML,y,CW,9,'F');
@@ -3218,6 +3227,7 @@ function exportPDF(){
   doc.text('GRAND TOTAL WITHOUT VAT', ML+2, y+6);
   doc.text(fmt(grand), TOT_CZK, y+6, {align:'right'});
   if(showAlt){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,150,100); doc.text(fmtAltPDF(grand), TOT_ALT, y+6, {align:'right'}); }
+  if(showActualPDF&&actGrand>0){ doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,107,0); doc.text(fmt(actGrand), TOT_ACT, y+6, {align:'right'}); }
 
   // ── PAGE FOOTERS ──────────────────────────────────────────────────────────
   const totalPgs=doc.getNumberOfPages();
