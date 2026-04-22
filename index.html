@@ -1911,7 +1911,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 24;
+const APP_BUILD = 25;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2796,10 +2796,21 @@ function exportPDF(){
   // ── Layout constants ──────────────────────────────────────────────────────
   const PW=210, PH=297, ML=14, MR=196, CW=MR-ML;
   // Crew columns — compress SR/SD when alt currency shown
-  // Compress columns the same way for alt and/or actual — each extra column shifts CZK 16mm left
-  const _compress = showAlt || showActualPDF;
-  const C = {PD:112, PR:_compress?132:136, SD:_compress?149:156, SR:_compress?164:179};
-  const Q = {QTY:144, RATE:_compress?161:173};
+  // Column layout — explicit per-mode to avoid any overlap
+  let C, Q, TOT_CZK, TOT_ALT, TOT_ACT;
+  if(!showAlt && !showActualPDF){
+    C={PD:112,PR:136,SD:156,SR:179}; Q={QTY:144,RATE:173};
+    TOT_CZK=MR; TOT_ALT=null; TOT_ACT=null;
+  } else if(showAlt && !showActualPDF){
+    C={PD:112,PR:132,SD:149,SR:164}; Q={QTY:144,RATE:161};
+    TOT_CZK=MR-16; TOT_ALT=MR; TOT_ACT=null;
+  } else if(!showAlt && showActualPDF){
+    C={PD:112,PR:126,SD:139,SR:153}; Q={QTY:132,RATE:153};
+    TOT_CZK=MR-34; TOT_ALT=null; TOT_ACT=MR;
+  } else {
+    C={PD:112,PR:120,SD:133,SR:147}; Q={QTY:126,RATE:147};
+    TOT_CZK=MR-50; TOT_ALT=MR-34; TOT_ACT=MR;
+  }
   // Row heights
   const RH=6.5;   // standard row
   const SH=5;     // van sub-row
@@ -2834,10 +2845,6 @@ function exportPDF(){
     doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);
     doc.text(Math.round(aVal).toLocaleString('cs-CZ')+' CZK',TOT_ACT,yy,{align:'right'});
   }
-  // Column positions: each extra column (alt, actual) shifts CZK 16mm left, actual at far right
-  const TOT_ACT = showActualPDF ? MR : null;
-  const TOT_ALT = showAlt ? (showActualPDF ? MR-16 : MR) : null;
-  const TOT_CZK = MR - (showAlt?16:0) - (showActualPDF?16:0);
 
   let y=0, _pg=1;
 

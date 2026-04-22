@@ -1,4 +1,4 @@
-const CACHE = 'armada-budget-v28b24';
+const CACHE = 'armada-budget-v28b25';
 
 self.addEventListener('install', e => {
   e.waitUntil(
