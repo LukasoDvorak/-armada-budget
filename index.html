@@ -1911,7 +1911,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 29;
+const APP_BUILD = 30;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3067,7 +3067,7 @@ function exportPDF(){
   // Category rows
   cats.forEach(cat=>{
     const tot=catTotal(cat);
-    if(tot===0) return;
+    if(tot===0 && !(showActualPDF && getCatActual(cat)>0)) return;
     doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,107,0);
     doc.text(cat.code, ML+2, y+4.5);
     doc.setTextColor(20,20,20); doc.setFont('helvetica','normal');
@@ -3114,13 +3114,13 @@ function exportPDF(){
           const _rn=rowNotes[crewKey(cat.code,si,ri)]||'';
           if(row.van){ const vt=row.subs.reduce((s,[,q,r])=>s+q*r,0); if(!vt)return; h+=8; if(_rn)h+=NH; row.subs.forEach(([,q,r])=>{if(q*r>0)h+=SH;}); }
           else if(isOT){ const _ot=row.length===4?row[2]*row[3]:row[1]*row[2]; if(!_ot)return; h+=RH+0.5+(_rn?NH:0); }
-          else if(row.length===6){ if(!row[2]*row[3]+row[4]*row[5])return; h+=RH+0.5+((row[1]||_rn)?NH:0); }
-          else if(row.length===4&&typeof row[1]==='number'){ if(!row[1]*row[2]*row[3])return; h+=RH+0.5+(_rn?NH:0); }
-          else if(row.length===4){ if(!row[2]*row[3])return; h+=RH+0.5+(_rn?NH:0); }
+          else if(row.length===6){ const _aV6=actualData[crewKey(cat.code,si,ri)]||0; if(!row[2]*row[3]+row[4]*row[5] && !(showActualPDF&&_aV6>0))return; h+=RH+0.5+((row[1]||_rn)?NH:0); }
+          else if(row.length===4&&typeof row[1]==='number'){ const _aV4n=actualData[crewKey(cat.code,si,ri)]||0; if(!row[1]*row[2]*row[3] && !(showActualPDF&&_aV4n>0))return; h+=RH+0.5+(_rn?NH:0); }
+          else if(row.length===4){ const _aV4=actualData[crewKey(cat.code,si,ri)]||0; if(!row[2]*row[3] && !(showActualPDF&&_aV4>0))return; h+=RH+0.5+(_rn?NH:0); }
         });
       });
     } else if(cat.type==='std'){
-      cat.rows.forEach(([,nt,q,r])=>{ if(!q*r)return; h+=RH+0.5+(nt?NH:0); });
+      cat.rows.forEach(([,nt,q,r],ri)=>{ const _aVS=actualData[stdKey(cat.code,ri)]||0; if(!q*r && !(showActualPDF&&_aVS>0))return; h+=RH+0.5+(nt?NH:0); });
     } else if(cat.type==='transport'){
       cat.vans.forEach((van,vi)=>{ const vt=van.subs.reduce((s,[,q,r])=>s+q*r,0); if(!vt)return; h+=8; van.subs.forEach(([,q,r])=>{if(q*r>0)h+=SH;}); });
     } else if(cat.type==='talent'){
@@ -3128,7 +3128,8 @@ function exportPDF(){
         if(si>0&&sec.name) h+=SBH+1;
         sec.rows.forEach((row,ri)=>{
           const _rt=row.qty!==undefined?row.qty*row.rate:row.amount!==undefined?row.amount:row.subs?row.subs.reduce((s,[,q,r,af])=>s+(af?r:q*r),0):0;
-          if(!_rt)return;
+          const _aVT=actualData[crewKey(cat.code,si,ri)]||0;
+          if(!_rt && !(showActualPDF&&_aVT>0))return;
           const _rn=rowNotes[crewKey(cat.code,si,ri)]||'';
           if(row.subs){ h+=8; if(_rn)h+=NH; row.subs.forEach(([,q,r,af])=>{if((af?r:q*r)>0)h+=SH;}); }
           else { h+=RH+0.5+(_rn?NH:0); }
@@ -3143,7 +3144,7 @@ function exportPDF(){
 
   cats.forEach(cat=>{
     const tot=catTotal(cat);
-    if(tot===0) return;
+    if(tot===0 && !(showActualPDF && getCatActual(cat)>0)) return;
 
     // Keep category together — only move to new page if it fits on one page
     const _estH=estimateCatH(cat);
@@ -3175,15 +3176,16 @@ function exportPDF(){
             else               otRow(row[0], row[1], row[2]);
             if(_rn) noteRow(_rn);
           } else if(row.length===6){
-            if(row[2]*row[3]+row[4]*row[5]===0) return;
+            const _aVal6=actualData[crewKey(cat.code,si,ri)]||0;
+            if(row[2]*row[3]+row[4]*row[5]===0 && !(showActualPDF&&_aVal6>0)) return;
             const code=cat.code+String(++n).padStart(2,'0');
-            crewRow(code, row[0], row[1]||_rn, row[2], row[3], row[4], row[5], actualData[crewKey(cat.code,si,ri)]||0);
+            crewRow(code, row[0], row[1]||_rn, row[2], row[3], row[4], row[5], _aVal6);
           } else if(row.length===4&&typeof row[1]==='number'){
             // triple row: name,cnt,qty,rate – note from rowNotes
-            if(row[1]*row[2]*row[3]===0) return;
+            const _aVal=actualData[crewKey(cat.code,si,ri)]||0;
+            if(row[1]*row[2]*row[3]===0 && !(showActualPDF&&_aVal>0)) return;
             const code=cat.code+String(++n).padStart(2,'0');
             const tot=row[1]*row[2]*row[3];
-            const _aVal=actualData[crewKey(cat.code,si,ri)]||0;
             chk(RH+(_rn?NH:0));
             doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0);
             doc.text(code, ML+1, y+4.5);
@@ -3194,9 +3196,10 @@ function exportPDF(){
             pAlt(tot,y+4.5); pActual(_aVal,y+4.5);
             y+=RH; noteRow(_rn); drawSep(); y+=0.5;
           } else if(row.length===4){
-            if(row[2]*row[3]===0) return;
+            const _aValE=actualData[crewKey(cat.code,si,ri)]||0;
+            if(row[2]*row[3]===0 && !(showActualPDF&&_aValE>0)) return;
             const code=cat.code+String(++n).padStart(2,'0');
-            stdRow(code, row[0], row[1], row[2], row[3], actualData[crewKey(cat.code,si,ri)]||0);
+            stdRow(code, row[0], row[1], row[2], row[3], _aValE);
           }
         });
       });
@@ -3205,9 +3208,10 @@ function exportPDF(){
     } else if(cat.type==='std'){
       catBar(cat.code, cat.label, 'qty');
       cat.rows.forEach(([desc,noteText,qty,rate],ri)=>{
-        if(qty*rate===0) return;
+        const _aValS=actualData[stdKey(cat.code,ri)]||0;
+        if(qty*rate===0 && !(showActualPDF&&_aValS>0)) return;
         const code=cat.code+String(ri+1).padStart(2,'0');
-        stdRow(code, desc, noteText, qty, rate, actualData[stdKey(cat.code,ri)]||0);
+        stdRow(code, desc, noteText, qty, rate, _aValS);
       });
       catTotRow(cat.code, tot, showActualPDF?getCatActual(cat):0);
 
@@ -3237,10 +3241,10 @@ function exportPDF(){
 
         sec.rows.forEach((row,ri)=>{
           const _rt=row.qty!==undefined?row.qty*row.rate:row.amount!==undefined?row.amount:row.subs?row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0):0;
-          if(_rt===0) return;
+          const _aKey=crewKey(cat.code,si,ri);const _aValT=actualData[_aKey]||0;
+          if(_rt===0 && !(showActualPDF&&_aValT>0)) return;
           const code=cat.code+String(++n).padStart(2,'0');
           const _rn=rowNotes[crewKey(cat.code,si,ri)]||'';
-          const _aKey=crewKey(cat.code,si,ri);const _aValT=actualData[_aKey]||0;
           if(row.qty!==undefined){
             stdRow(code, row.name, _rn, row.qty, row.rate, _aValT);
           } else if(row.amount!==undefined){
