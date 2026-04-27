@@ -1911,7 +1911,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 26;
+const APP_BUILD = 27;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2825,9 +2825,9 @@ function exportPDF(){
   const fee  = isFlatFee ? (parseFloat(g('fee-flat-amt'))||0) : Math.round(feeBase()*feePct/100);
   const ins  = isInsFlat ? (parseFloat(g('ins-flat-amt'))||0) : Math.round(subTot*insPct/100);
   const grand = subTot+fee+ins;
-  // Actual totals
-  const actSubTot = showActualPDF ? Object.values(actualData).reduce((s,v)=>s+(typeof v==='number'?v:0),0) : 0;
-  const actFee    = showActualPDF ? (isFlatFee ? fee : Math.round(actSubTot*feePct/100)) : 0;
+  // Actual totals — use same functions as the app to respect feeExclusions and overcost rows
+  const actSubTot = showActualPDF ? actualTotal() : 0;
+  const actFee    = showActualPDF ? (isFlatFee ? fee : Math.round(actualFeeBase()*feePct/100)) : 0;
   const actIns    = showActualPDF ? (isInsFlat ? ins : Math.round(actSubTot*insPct/100)) : 0;
   const actGrand  = actSubTot + actFee + actIns;
 
