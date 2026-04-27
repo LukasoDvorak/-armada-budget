@@ -1911,7 +1911,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 27;
+const APP_BUILD = 28;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2841,11 +2841,13 @@ function exportPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(120,120,120);
     doc.text(fmtAltPDF(val),TOT_ALT,yy,{align:'right'});
   }
-  // helper: print actual value as proper column
+  // Center of the REAL column (between TOT_CZK and MR)
+  const ACT_CTR = showActualPDF ? (TOT_CZK + MR) / 2 : null;
+  // helper: print REAL value centered in REAL column
   function pActual(aVal,yy){
     if(!showActualPDF||!(aVal>0))return;
     doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);
-    doc.text(Math.round(aVal).toLocaleString('cs-CZ')+' CZK',TOT_ACT,yy,{align:'right'});
+    doc.text(Math.round(aVal).toLocaleString('cs-CZ')+' CZK',ACT_CTR,yy,{align:'center'});
   }
 
   let y=0, _pg=1;
@@ -2887,7 +2889,7 @@ function exportPDF(){
     }
     doc.text(showAlt?'CZK':(showActualPDF?'BUDGET':'TOTAL'), TOT_CZK, y+6, {align:'right'});
     if(showAlt){ doc.setTextColor(85,85,85); doc.text(altCurName.toUpperCase(), TOT_ALT, y+6, {align:'right'}); }
-    if(showActualPDF){ doc.setTextColor(255,107,0); doc.text('ACTUAL', TOT_ACT, y+6, {align:'right'}); }
+    if(showActualPDF){ doc.setTextColor(255,107,0); doc.text('REAL', ACT_CTR, y+6, {align:'center'}); }
     y+=BH+1;
   }
 
@@ -2901,13 +2903,14 @@ function exportPDF(){
   }
 
   // ── Category total row ────────────────────────────────────────────────────
-  function catTotRow(code, tot){
+  function catTotRow(code, tot, actTot=0){
     chk(TH+4);
     doc.setFillColor(238,238,238); doc.rect(ML,y,CW,TH,'F');
     doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(20,20,20);
     doc.text('Total '+code, ML+3, y+5);
     doc.text(fmt(tot), TOT_CZK, y+5, {align:'right'});
     pAlt(tot,y+5);
+    if(showActualPDF&&actTot>0){ doc.setTextColor(255,107,0); doc.text(Math.round(actTot).toLocaleString('cs-CZ')+' CZK', ACT_CTR, y+5, {align:'center'}); }
     doc.setDrawColor(175,175,175); doc.setLineWidth(0.3); doc.line(ML,y+TH,MR,y+TH);
     y+=TH+4;
   }
@@ -3058,7 +3061,7 @@ function exportPDF(){
   doc.text('CATEGORY', ML+13, y+5.5);
   doc.text(showAlt?'TOTAL CZK':'TOTAL', TOT_CZK, y+5.5, {align:'right'});
   if(showAlt){ doc.setTextColor(120,120,120); doc.text(altCurName, TOT_ALT, y+5.5, {align:'right'}); }
-  if(showActualPDF){ doc.setTextColor(255,107,0); doc.text('ACTUAL', TOT_ACT, y+5.5, {align:'right'}); }
+  if(showActualPDF){ doc.setTextColor(255,107,0); doc.text('REAL', ACT_CTR, y+5.5, {align:'center'}); }
   y+=9;
 
   // Category rows
@@ -3071,7 +3074,7 @@ function exportPDF(){
     doc.text(cat.label.toUpperCase(), ML+13, y+4.5);
     doc.setFont('helvetica','bold'); doc.text(fmt(tot), TOT_CZK, y+4.5, {align:'right'});
     if(showAlt&&tot>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text(fmtAltPDF(tot), TOT_ALT, y+4.5, {align:'right'}); }
-    if(showActualPDF){const _acat=getCatActual(cat);if(_acat>0){doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_acat).toLocaleString('cs-CZ')+' CZK',TOT_ACT,y+4.5,{align:'right'});}}
+    if(showActualPDF){const _acat=getCatActual(cat);if(_acat>0){doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_acat).toLocaleString('cs-CZ')+' CZK',ACT_CTR,y+4.5,{align:'center'});}}
     y+=RH; drawSep(); y+=0.5;
   });
   y+=4;
@@ -3083,7 +3086,7 @@ function exportPDF(){
     doc.text(label, ML, y);
     doc.setFont('helvetica','bold'); doc.text(fmt(val), TOT_CZK, y, {align:'right'});
     if(showAlt&&val>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(130,130,130); doc.text(fmtAltPDF(val), TOT_ALT, y, {align:'right'}); }
-    if(showActualPDF&&actVal>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,107,0); doc.text(fmt(actVal), TOT_ACT, y, {align:'right'}); }
+    if(showActualPDF&&actVal>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,107,0); doc.text(fmt(actVal), ACT_CTR, y, {align:'center'}); }
     y+=isLast?7:6.5;
   }
   drawTotalLine('Sub-Total Direct Costs', subTot, actSubTot);
@@ -3094,7 +3097,7 @@ function exportPDF(){
   doc.text('GRAND TOTAL WITHOUT VAT', ML+2, y+6);
   doc.text(fmt(grand), TOT_CZK, y+6, {align:'right'});
   if(showAlt){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,150,100); doc.text(fmtAltPDF(grand), TOT_ALT, y+6, {align:'right'}); }
-  if(showActualPDF&&actGrand>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(255,107,0); doc.text(fmt(actGrand), TOT_ACT, y+6, {align:'right'}); }
+  if(showActualPDF&&actGrand>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(255,107,0); doc.text(fmt(actGrand), ACT_CTR, y+6, {align:'center'}); }
 
   // ─────────────────────────────────────────────────────────────────────────
   // ── DETAIL PAGES (flowing — no forced breaks per category) ────────────────
@@ -3156,7 +3159,7 @@ function exportPDF(){
           }
         });
       });
-      catTotRow(cat.code, tot);
+      catTotRow(cat.code, tot, showActualPDF?getCatActual(cat):0);
 
     } else if(cat.type==='std'){
       catBar(cat.code, cat.label, 'qty');
@@ -3165,7 +3168,7 @@ function exportPDF(){
         const code=cat.code+String(ri+1).padStart(2,'0');
         stdRow(code, desc, noteText, qty, rate, actualData[stdKey(cat.code,ri)]||0);
       });
-      catTotRow(cat.code, tot);
+      catTotRow(cat.code, tot, showActualPDF?getCatActual(cat):0);
 
     } else if(cat.type==='transport'){
       catBar(cat.code, cat.label, 'qty');
@@ -3183,7 +3186,7 @@ function exportPDF(){
           if(_vs){ doc.setFont('helvetica','italic'); doc.setFontSize(6.5); doc.setTextColor(130,130,130); const _ls=doc.splitTextToSize(_vs,70); doc.text(_ls,ML+18,y+2.5); y+=_ls.length*3.5; }
         });
       });
-      catTotRow(cat.code, tot);
+      catTotRow(cat.code, tot, showActualPDF?getCatActual(cat):0);
 
     } else if(cat.type==='talent'){
       let n=0;
@@ -3211,13 +3214,13 @@ function exportPDF(){
           } else if(row.subs){
             const tt=row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0);
             vanHdr(code, row.name, tt);
-            if(showActualPDF&&_aValT>0){doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_aValT).toLocaleString('cs-CZ')+' CZK',TOT_ACT,y-3.5,{align:'right'});}
+            if(showActualPDF&&_aValT>0){doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_aValT).toLocaleString('cs-CZ')+' CZK',ACT_CTR,y-3.5,{align:'center'});}
             if(_rn) noteRow(_rn);
             row.subs.forEach(([lbl,q,r,isAF])=>{if((isAF?r:q*r)===0)return;vanSub(lbl,q,r);});
           }
         });
       });
-      catTotRow(cat.code, tot);
+      catTotRow(cat.code, tot, showActualPDF?getCatActual(cat):0);
     }
   });
 
@@ -3229,7 +3232,7 @@ function exportPDF(){
     doc.text(lbl, ML, y);
     doc.setFont('helvetica','bold'); doc.text(fmt(val), TOT_CZK, y, {align:'right'});
     if(showAlt&&val>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(130,130,130); doc.text(fmtAltPDF(val), TOT_ALT, y, {align:'right'}); }
-    if(showActualPDF&&actVal>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,107,0); doc.text(fmt(actVal), TOT_ACT, y, {align:'right'}); }
+    if(showActualPDF&&actVal>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,107,0); doc.text(fmt(actVal), ACT_CTR, y, {align:'center'}); }
     y+=7;
   });
   doc.setFillColor(18,18,18); doc.rect(ML,y,CW,9,'F');
@@ -3237,7 +3240,7 @@ function exportPDF(){
   doc.text('GRAND TOTAL WITHOUT VAT', ML+2, y+6);
   doc.text(fmt(grand), TOT_CZK, y+6, {align:'right'});
   if(showAlt){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,150,100); doc.text(fmtAltPDF(grand), TOT_ALT, y+6, {align:'right'}); }
-  if(showActualPDF&&actGrand>0){ doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,107,0); doc.text(fmt(actGrand), TOT_ACT, y+6, {align:'right'}); }
+  if(showActualPDF&&actGrand>0){ doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,107,0); doc.text(fmt(actGrand), ACT_CTR, y+6, {align:'center'}); }
 
   // ── PAGE FOOTERS ──────────────────────────────────────────────────────────
   const totalPgs=doc.getNumberOfPages();
