@@ -1911,7 +1911,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 28;
+const APP_BUILD = 29;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3100,13 +3100,54 @@ function exportPDF(){
   if(showActualPDF&&actGrand>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(255,107,0); doc.text(fmt(actGrand), ACT_CTR, y+6, {align:'center'}); }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ── DETAIL PAGES (flowing — no forced breaks per category) ────────────────
+  // ── DETAIL PAGES ─────────────────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────────────────────
+
+  // Estimate rendered height of a category (mirrors render logic, skips zero rows)
+  function estimateCatH(cat){
+    let h=BH+1; // catBar
+    if(cat.type==='crew'){
+      cat.sections.forEach((sec,si)=>{
+        const isOT=sec.name==='Overtimes';
+        if(si>0&&sec.name) h+=SBH+1;
+        sec.rows.forEach((row,ri)=>{
+          const _rn=rowNotes[crewKey(cat.code,si,ri)]||'';
+          if(row.van){ const vt=row.subs.reduce((s,[,q,r])=>s+q*r,0); if(!vt)return; h+=8; if(_rn)h+=NH; row.subs.forEach(([,q,r])=>{if(q*r>0)h+=SH;}); }
+          else if(isOT){ const _ot=row.length===4?row[2]*row[3]:row[1]*row[2]; if(!_ot)return; h+=RH+0.5+(_rn?NH:0); }
+          else if(row.length===6){ if(!row[2]*row[3]+row[4]*row[5])return; h+=RH+0.5+((row[1]||_rn)?NH:0); }
+          else if(row.length===4&&typeof row[1]==='number'){ if(!row[1]*row[2]*row[3])return; h+=RH+0.5+(_rn?NH:0); }
+          else if(row.length===4){ if(!row[2]*row[3])return; h+=RH+0.5+(_rn?NH:0); }
+        });
+      });
+    } else if(cat.type==='std'){
+      cat.rows.forEach(([,nt,q,r])=>{ if(!q*r)return; h+=RH+0.5+(nt?NH:0); });
+    } else if(cat.type==='transport'){
+      cat.vans.forEach((van,vi)=>{ const vt=van.subs.reduce((s,[,q,r])=>s+q*r,0); if(!vt)return; h+=8; van.subs.forEach(([,q,r])=>{if(q*r>0)h+=SH;}); });
+    } else if(cat.type==='talent'){
+      cat.sections.forEach((sec,si)=>{
+        if(si>0&&sec.name) h+=SBH+1;
+        sec.rows.forEach((row,ri)=>{
+          const _rt=row.qty!==undefined?row.qty*row.rate:row.amount!==undefined?row.amount:row.subs?row.subs.reduce((s,[,q,r,af])=>s+(af?r:q*r),0):0;
+          if(!_rt)return;
+          const _rn=rowNotes[crewKey(cat.code,si,ri)]||'';
+          if(row.subs){ h+=8; if(_rn)h+=NH; row.subs.forEach(([,q,r,af])=>{if((af?r:q*r)>0)h+=SH;}); }
+          else { h+=RH+0.5+(_rn?NH:0); }
+        });
+      });
+    }
+    h+=TH+4; // catTotRow
+    return h;
+  }
+
   newPage();
 
   cats.forEach(cat=>{
     const tot=catTotal(cat);
     if(tot===0) return;
+
+    // Keep category together — only move to new page if it fits on one page
+    const _estH=estimateCatH(cat);
+    if(_estH < PH-32) chk(_estH);
 
     if(cat.type==='crew'){
       let n=0; // item counter within this cat
