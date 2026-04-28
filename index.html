@@ -19,6 +19,9 @@ body { font-family: 'DM Mono', 'Courier New', monospace; font-size: 12px; color:
 .tabs { display: flex; background: #fafafa; border-bottom: 1px solid #e0e0e0; padding: 0 12px; }
 .tab { padding: 9px 14px; cursor: pointer; font-size: 11px; font-weight: 700; letter-spacing: 1px; border: none; background: none; border-bottom: 2px solid transparent; color: #888; font-family: inherit; }
 .tab.active { border-bottom: 2px solid #0f0f0f; color: #0f0f0f; }
+.tab-ce { margin-left: auto; color: #cc5500; }
+.tab-ce.active { border-bottom: 2px solid #ff6b00; color: #ff6b00; }
+.tab-ce:hover { color: #ff6b00; }
 .panel { display: none; } .panel.active { display: block; }
 .hdr-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 16px; margin: 12px; }
 .hdr-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px 16px; }
@@ -392,7 +395,7 @@ body.locked .del-sub { display: none; }
   <button class="tab active" onclick="showTab('budget',this)">BUDGET</button>
   <button class="tab" onclick="showTab('header',this)">PROJECT INFO</button>
   <button class="tab" onclick="showTab('summary',this)">SUMMARY</button>
-  <button class="tab" onclick="showTab('vn',this)">VÍCENÁKLADY</button>
+  <button class="tab tab-ce" onclick="showTab('vn',this)">⚠ CHANGE ORDERS</button>
 </div>
 
 <div id="panel-header" class="panel">
@@ -2174,7 +2177,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 1;
+const APP_BUILD = 2;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3885,7 +3888,7 @@ document.addEventListener('keydown',e=>{
   // Tab shortcuts
   const tabMap={'b':'budget','p':'header','s':'summary','v':'vn'};
   const tab=tabMap[k];
-  if(tab){ e.preventDefault(); const btn=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim().startsWith(tab==='budget'?'BUDGET':tab==='header'?'PROJECT':tab==='summary'?'SUMMARY':'VÍCENÁKLADY')); showTab(tab,btn); return; }
+  if(tab){ e.preventDefault(); const btn=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim().startsWith(tab==='budget'?'BUDGET':tab==='header'?'PROJECT':tab==='summary'?'SUMMARY':'CHANGE')); showTab(tab,btn); return; }
   // Toggle shortcuts
   if(k==='f'){ e.preventDefault(); toggleFeeMode(); return; }
   if(k==='w'){ e.preventDefault(); toggleWorking(); return; }
