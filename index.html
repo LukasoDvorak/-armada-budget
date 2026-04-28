@@ -679,9 +679,9 @@ function renderOvercostBlock() {
   overcostRows.forEach((row, ri) => {
     html += `<tr class="${ri%2===0?'even':''}">
       <td>${makeEditable(row.name, `overcostRows[${ri}].name=v;isDirty=true;`)}</td>
-      <td><input type="number" value="${row.amount||0}" style="width:100%;text-align:right;padding:2px 4px;font-size:11px;border:1px solid #f5c5a5;border-radius:3px;font-family:inherit;background:#fff8f6;" oninput="overcostRows[${ri}].amount=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;" onchange="renderCats();"></td>
-      ${workingMode?`<td class="td-work"><input class="working-inp" type="number" value="${row.working||0}" style="width:100%;" oninput="overcostRows[${ri}].working=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;"></td>`:''}
-      ${actualMode?`<td class="td-actual"><input class="actual-inp" type="number" value="${row.actual||0}" style="width:100%;" oninput="overcostRows[${ri}].actual=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;"></td>`:''}
+      <td><input type="number" step="any" value="${row.amount??0}" style="width:100%;text-align:right;padding:2px 4px;font-size:11px;border:1px solid #f5c5a5;border-radius:3px;font-family:inherit;background:#fff8f6;" oninput="overcostRows[${ri}].amount=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;" onchange="renderCats();"></td>
+      ${workingMode?`<td class="td-work"><input class="working-inp" type="number" step="any" value="${row.working??0}" style="width:100%;" oninput="overcostRows[${ri}].working=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;"></td>`:''}
+      ${actualMode?`<td class="td-actual"><input class="actual-inp" type="number" step="any" value="${row.actual??0}" style="width:100%;" oninput="overcostRows[${ri}].actual=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;"></td>`:''}
       <td><button class="del-sub" onclick="overcostRows.splice(${ri},1);renderCats();isDirty=true;">×</button></td>
     </tr>`;
   });
@@ -1061,7 +1061,8 @@ function talentRowTotal(row) {
 }
 
 function feeBase() {
-  if (!Object.keys(feeExclusions).length) return totalAll();
+  const ocAdd = overcostMode ? overcostTotal() : 0;
+  if (!Object.keys(feeExclusions).length) return totalAll() + ocAdd;
   let base = 0;
   cats.forEach(cat => {
     if (cat.type==='crew') {
@@ -1079,21 +1080,21 @@ function feeBase() {
       cat.rows.forEach(([,,q,r],ri) => { if(!feeExclusions[stdKey(cat.code,ri)]) base+=q*r; });
     }
   });
-  return base;
+  return base + ocAdd;
 }
 function workingFeeBase() {
-  const ocW = overcostMode ? overcostRows.reduce((s,r)=>s+(parseFloat(r.working)||0),0) : 0;
-  if (!Object.keys(feeExclusions).length) return workingTotal() - ocW;
+  if (!Object.keys(feeExclusions).length) return workingTotal();
   return Object.entries(workingData)
     .filter(([k,v])=>!k.startsWith('__')&&typeof v==='number'&&!feeExclusions[k])
-    .reduce((s,[,v])=>s+v,0);
+    .reduce((s,[,v])=>s+v,0)
+    + (overcostMode ? overcostRows.reduce((s,r)=>s+(parseFloat(r.working)||0),0) : 0);
 }
 function actualFeeBase() {
-  const ocA = overcostMode ? overcostRows.reduce((s,r)=>s+(parseFloat(r.actual)||0),0) : 0;
-  if (!Object.keys(feeExclusions).length) return actualTotal() - ocA;
+  if (!Object.keys(feeExclusions).length) return actualTotal();
   return Object.entries(actualData)
     .filter(([k,v])=>!k.startsWith('__')&&typeof v==='number'&&!feeExclusions[k])
-    .reduce((s,[,v])=>s+v,0);
+    .reduce((s,[,v])=>s+v,0)
+    + (overcostMode ? overcostRows.reduce((s,r)=>s+(parseFloat(r.actual)||0),0) : 0);
 }
 
 // ── TOGGLES ───────────────────────────────────────────────────────────────────
@@ -1891,7 +1892,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 31;
+const APP_BUILD = 32;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2600,7 +2601,7 @@ function updateSummaryBar(){
     : Math.round(feeBase()*feePct);
   const ins = isInsFlat
     ? (parseFloat(document.getElementById('ins-flat-amt')?.value)||0)
-    : Math.round(sub*insPct);
+    : Math.round((sub+ocTot)*insPct);
   const grand=sub+ocTot+fee+ins;
 
   const fmtBoth=n=>{let s=fmt(n);if(altEnabled())s+=` <span style="color:#555;font-size:10px">(${fmtAlt(n)})</span>`;return s;};
@@ -2808,7 +2809,7 @@ function exportPDF(){
   const subTot  = totalAll();
   const ocSubTot = overcostMode ? overcostTotal() : 0;
   const fee  = isFlatFee ? (parseFloat(g('fee-flat-amt'))||0) : Math.round(feeBase()*feePct/100);
-  const ins  = isInsFlat ? (parseFloat(g('ins-flat-amt'))||0) : Math.round(subTot*insPct/100);
+  const ins  = isInsFlat ? (parseFloat(g('ins-flat-amt'))||0) : Math.round((subTot+ocSubTot)*insPct/100);
   const grand = subTot+ocSubTot+fee+ins;
   // Actual totals — use same functions as the app to respect feeExclusions and overcost rows
   const actSubTot = showActualPDF ? actualTotal() : 0;  // actualTotal() already includes overcost actual
