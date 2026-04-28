@@ -273,16 +273,16 @@ body.locked .del-sub { display: none; }
       <p style="margin:0 0 4px">Production fee and insurance percentages are set in the settings panel (gear icon or Project Info tab). You can switch either to a flat amount. Fee is calculated on the subtotal; insurance on subtotal + fee.</p>
       <p style="margin:0 0 16px">Enable <b style="color:#eee">💰 Fee</b> mode to show a checkbox column — uncheck any row to exclude it from the fee base.</p>
 
-      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">WORKING &amp; ACTUAL MODES</h3>
+      <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">WORKING &amp; REAL MODES</h3>
       <p style="margin:0 0 4px">These are two independent data layers that sit alongside your budget without changing it:</p>
       <ul style="margin:0 0 16px;padding-left:18px">
         <li><b style="color:#eee">🔧 Working</b> — internal pre-production estimates. Green = under budget, red = over.</li>
-        <li><b style="color:#eee">📌 Actual</b> — real costs as the shoot progresses. Same colour logic.</li>
+        <li><b style="color:#eee">📌 Real</b> — real costs as the shoot progresses. Same colour logic.</li>
       </ul>
-      <p style="margin:0 0 16px">Right-click the Working or Actual button for options to clear or copy data between layers. W GRAND and A GRAND totals appear in the sticky bar at the bottom.</p>
+      <p style="margin:0 0 16px">Right-click the Working or Real button for options to clear or copy data between layers. W GRAND and R GRAND totals appear in the sticky bar at the bottom.</p>
 
       <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">OVERCOST</h3>
-      <p style="margin:0 0 16px">Enable <b style="color:#eee">⚠ Overcost</b> to add a special section for costs that exceed the original budget. These roll up into their own total and are tracked separately in Working/Actual.</p>
+      <p style="margin:0 0 16px">Enable <b style="color:#eee">⚠ Overcost</b> to add a special section for costs that exceed the original budget. These roll up into their own total and are tracked separately in Working/Real.</p>
 
       <h3 style="color:#ff6b00;font-size:11px;letter-spacing:1.5px;margin:0 0 8px">SAVING &amp; VERSIONS</h3>
       <ul style="margin:0 0 16px;padding-left:18px">
@@ -317,7 +317,7 @@ body.locked .del-sub { display: none; }
         <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">S</td><td style="padding:3px 0">Switch to Summary tab</td></tr>
         <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">F</td><td style="padding:3px 0">Toggle Fee column</td></tr>
         <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">W</td><td style="padding:3px 0">Toggle Working mode</td></tr>
-        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">A</td><td style="padding:3px 0">Toggle Actual mode</td></tr>
+        <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">A</td><td style="padding:3px 0">Toggle Real mode</td></tr>
         <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">O</td><td style="padding:3px 0">Toggle Overcost section</td></tr>
         <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">L</td><td style="padding:3px 0">Toggle Lock</td></tr>
         <tr><td style="padding:3px 8px 3px 0;color:#eee;font-family:monospace">N</td><td style="padding:3px 0">Toggle Notes panel</td></tr>
@@ -344,7 +344,7 @@ body.locked .del-sub { display: none; }
   </span>
   <button class="topbtn" id="btn-fee"      onclick="toggleFeeMode()"  title="Show column for selecting rows included in production fee" style="flex-shrink:0">💰 Fee</button>
   <button class="topbtn" id="btn-working"  onclick="toggleWorking()" oncontextmenu="showWorkingCtx(event)" title="Working layer – never exported" style="flex-shrink:0">🔧 Working</button>
-  <button class="topbtn" id="btn-actual"   onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Actual layer" style="flex-shrink:0">📌 Actual</button>
+  <button class="topbtn" id="btn-actual"   onclick="toggleActual()" oncontextmenu="showActualCtx(event)" title="Real layer" style="flex-shrink:0">📌 Real</button>
   <button class="topbtn" id="btn-overcost" onclick="toggleOvercost()" title="Overcost items above budget" style="flex-shrink:0">⚠ Overcost</button>
   <button class="topbtn" id="btn-ot" onclick="showOTTotal()" title="Sum of overtime costs (C incl. fee, F G H I J K L)" style="flex-shrink:0">⏱ OT</button>
   <button class="topbtn" id="btn-lock"     onclick="toggleLock()"     title="Lock budget" style="flex-shrink:0">🔒 Lock</button>
@@ -510,7 +510,7 @@ body.locked .del-sub { display: none; }
     <div class="st-part"><span class="st-label">FEE</span><span id="st-fee" style="color:#888;font-size:14px">—</span></div>
     <div class="st-part"><span class="st-label">INS</span><span id="st-ins" style="color:#888;font-size:14px">—</span></div>
     <div class="st-part" id="st-working-part" style="display:none"><span class="st-label" style="color:#4d4">W GRAND</span><span id="st-working" style="color:#4d4;font-weight:700;font-size:13px">—</span><span id="st-working-sub" style="color:#4d4;font-size:9px;opacity:0.7">—</span><span id="st-working-diff" style="font-size:10px;font-weight:700;margin-left:4px">—</span></div>
-  <div class="st-part" id="st-actual-part" style="display:none"><span class="st-label" style="color:#6d6">A GRAND</span><span id="st-actual" style="color:#6d6;font-weight:700;font-size:13px">—</span><span id="st-actual-sub" style="color:#6d6;font-size:9px;opacity:0.7">—</span><span id="st-actual-diff" style="font-size:10px;font-weight:700;margin-left:4px">—</span></div>
+  <div class="st-part" id="st-actual-part" style="display:none"><span class="st-label" style="color:#6d6">R GRAND</span><span id="st-actual" style="color:#6d6;font-weight:700;font-size:13px">—</span><span id="st-actual-sub" style="color:#6d6;font-size:9px;opacity:0.7">—</span><span id="st-actual-diff" style="font-size:10px;font-weight:700;margin-left:4px">—</span></div>
   <div class="st-part" style="display:none"><span class="st-label" style="color:#ff9966">OVERCOST</span><span id="st-oc" style="color:#ff9966;font-size:11px">—</span></div>
   </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end">
@@ -694,7 +694,7 @@ function renderOvercostBlock() {
         <th class="thl">Item</th>
         <th style="text-align:right;min-width:100px">Budget</th>
         ${workingMode?'<th class="th-work" style="min-width:90px">Working</th>':''}
-        ${actualMode?'<th class="th-actual" style="min-width:90px">Actual</th>':''}
+        ${actualMode?'<th class="th-actual" style="min-width:90px">Real</th>':''}
         <th style="width:24px"></th>
       </tr></thead><tbody>`;
   overcostRows.forEach((row, ri) => {
@@ -1536,8 +1536,8 @@ function showActualCtx(e){
       else { snapshot(); prefillActual(); updateSummaryBar(); isDirty=true; renderCats(); }
     }},
     {sep:true},
-    {label:'🗑 Clear all (Actual)', del:true, fn:()=>{
-      if(!confirm('Delete all Actual data?')) return;
+    {label:'🗑 Clear all (Real)', del:true, fn:()=>{
+      if(!confirm('Delete all Real data?')) return;
       snapshot(); actualData={}; updateSummaryBar(); isDirty=true; renderCats();
     }},
   ];
@@ -2177,7 +2177,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 3;
+const APP_BUILD = 4;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2987,7 +2987,7 @@ function updateSummaryBar(){
     const aGrand=aTot+aFee+aIns, diff=aGrand-grand;
     const tbStyleA='padding:1px 5px;font-size:9px;font-family:inherit;border:1px solid #4a4;border-radius:3px;background:#1a3a1a;color:#6a6;cursor:pointer;';
     aBox.innerHTML=`<div class="sum-row sum-row-actual" style="margin-top:8px;border-top:1px solid #204020">
-      <span style="color:#6d6;font-size:10px;display:flex;align-items:center;gap:6px">Actual Fee
+      <span style="color:#6d6;font-size:10px;display:flex;align-items:center;gap:6px">Real Fee
         <button style="${tbStyleA}" onclick="actualData['__aFeeFlat']=!${aFeeFlat};updateSummaryBar();isDirty=true;">${aFeeFlat?'→ %':'→ flat'}</button>
       </span>
       <span style="display:flex;align-items:center;gap:4px">${aFeeFlat?
@@ -2996,7 +2996,7 @@ function updateSummaryBar(){
       <span style="color:#6d6;font-weight:700;min-width:100px;text-align:right">${fmt(aFee)}</span></span>
     </div>
     <div class="sum-row sum-row-actual">
-      <span style="color:#6d6;font-size:10px;display:flex;align-items:center;gap:6px">Actual Ins
+      <span style="color:#6d6;font-size:10px;display:flex;align-items:center;gap:6px">Real Ins
         <button style="${tbStyleA}" onclick="actualData['__aInsFlat']=!${aInsFlat};updateSummaryBar();isDirty=true;">${aInsFlat?'→ %':'→ flat'}</button>
       </span>
       <span style="display:flex;align-items:center;gap:4px">${aInsFlat?
@@ -3004,7 +3004,7 @@ function updateSummaryBar(){
         `<input class="pct-inp" type="number" value="${((actualData['__aInsPct']??insPct)*100).toFixed(1)}" style="background:#1a3a1a;border-color:#4a4;color:#9c9;width:52px" oninput="actualData['__aInsPct']=(parseFloat(this.value)||0)/100;updateSummaryBar();isDirty=true;"> <span style="color:#666;font-size:10px">%</span>`}
       <span style="color:#6d6;font-weight:700;min-width:100px;text-align:right">${fmt(aIns)}</span></span>
     </div>
-    <div class="sum-row sum-row-actual"><span style="color:#6d6">Actual Grand Total</span><span style="color:#6d6;font-weight:700">${fmt(aGrand)}</span></div>
+    <div class="sum-row sum-row-actual"><span style="color:#6d6">Real Grand Total</span><span style="color:#6d6;font-weight:700">${fmt(aGrand)}</span></div>
     <div class="sum-row sum-row-actual"><span style="color:#6d6">vs. Budget</span><span class="${diff<=0?'sum-saving-pos':'sum-saving-neg'}" style="font-weight:700">${diff>=0?'+':'−'} ${fmt(Math.abs(diff))}</span></div>`;
   } else aBox.innerHTML='';
 }
