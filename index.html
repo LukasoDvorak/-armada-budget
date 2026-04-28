@@ -168,6 +168,16 @@ body.locked .del-sub { display: none; }
 .td-work-inner { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
 /* Overcost */
 .overcost-block { border: 2px solid #8b2200; border-radius: 6px; overflow: hidden; margin: 8px 12px; }
+/* Vícenáklady / Amendments */
+.am-block { border: 1px solid #ddd; border-radius: 6px; overflow: hidden; margin: 10px 0; }
+.am-hdr { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; background: #1a1a1a; cursor: pointer; user-select: none; }
+.am-label { color: #ff9966; font-weight: 600; font-size: 11px; letter-spacing: 1.5px; }
+.am-mini-hdr { background: #f7f7f7; padding: 9px 14px; display: flex; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid #e8e8e8; }
+.am-mini-hdr input[type=text] { border: 1px solid #ddd; border-radius: 3px; padding: 3px 7px; font-size: 11px; font-family: inherit; }
+.am-footer { background: #f9f9f9; padding: 10px 14px; border-top: 1px solid #eee; }
+.am-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px; background: #fff; border-top: 1px solid #f0f0f0; }
+#panel-vn { padding: 12px 16px; }
+.vn-empty { text-align: center; color: #aaa; padding: 48px 20px; font-size: 12px; letter-spacing: 1px; }
 .overcost-hdr { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; background: #3a0f00; cursor: pointer; user-select: none; }
 .overcost-label { color: #ff9966; font-weight: 600; font-size: 11px; letter-spacing: 2px; }
 .overcost-total { color: #ff9966; font-size: 11px; font-weight: 700; }
@@ -382,6 +392,7 @@ body.locked .del-sub { display: none; }
   <button class="tab active" onclick="showTab('budget',this)">BUDGET</button>
   <button class="tab" onclick="showTab('header',this)">PROJECT INFO</button>
   <button class="tab" onclick="showTab('summary',this)">SUMMARY</button>
+  <button class="tab" onclick="showTab('vn',this)">VÍCENÁKLADY</button>
 </div>
 
 <div id="panel-header" class="panel">
@@ -481,6 +492,13 @@ body.locked .del-sub { display: none; }
 <div class="btn-row">
   <button class="btn" onclick="exportExcel()">EXPORT EXCEL ↗</button>
   <button class="btn btn-primary" onclick="exportPDF()">EXPORT PDF ↗</button>
+</div>
+
+<div id="panel-vn" class="panel">
+  <div id="vn-list"></div>
+  <div style="padding:4px 0 8px">
+    <button class="btn" onclick="addAmendment()">+ Nový vícenáklad</button>
+  </div>
 </div>
 
 <div id="sticky-total">
@@ -696,6 +714,269 @@ function renderOvercostBlock() {
   return html;
 }
 
+// ── VÍCENÁKLADY (Change Orders / Amendments) ──────────────────────────────────
+let amendments = [];
+let _amSeq = 1;
+function _amNewId() { return 'am' + (_amSeq++); }
+
+function addAmendment() {
+  const feePct = parseFloat(document.getElementById('pct-fee')?.value)||15;
+  const insPct = parseFloat(document.getElementById('pct-ins')?.value)||1;
+  amendments.push({
+    id: _amNewId(),
+    name: 'Vícenáklad ' + (amendments.length + 1),
+    hdrDate: new Date().toLocaleDateString('cs-CZ'),
+    hdrNote: '',
+    rows: [{name:'Položka',qty:1,rate:0}],
+    feePct,
+    insPct,
+    linked: false
+  });
+  renderAmendments();
+  isDirty = true;
+}
+
+function amSubtotal(am) {
+  return am.rows.reduce((s,r)=>s+(parseFloat(r.qty)||0)*(parseFloat(r.rate)||0),0);
+}
+function amFee(am)   { return Math.round(amSubtotal(am)*(parseFloat(am.feePct)||0)/100); }
+function amIns(am)   { return Math.round(amSubtotal(am)*(parseFloat(am.insPct)||0)/100); }
+function amGrand(am) { return amSubtotal(am)+amFee(am)+amIns(am); }
+
+// Lightweight update of a single row's amount cell + footer totals — no full re-render
+function _amUpdateRow(ai, ri) {
+  const am = amendments[ai]; if (!am) return;
+  const r = am.rows[ri];
+  const amt = (parseFloat(r.qty)||0)*(parseFloat(r.rate)||0);
+  const rEl = document.getElementById('am-r-'+am.id+'-'+ri);
+  if (rEl) rEl.textContent = amt ? fmt(amt) : '—';
+  const sub = amSubtotal(am), fee = amFee(am), ins = amIns(am), grand = amGrand(am);
+  const s = sfx => document.getElementById('am-'+sfx+'-'+am.id);
+  if(s('sub'))   s('sub').textContent   = fmt(sub);
+  if(s('fee'))   s('fee').textContent   = fmt(fee);
+  if(s('ins'))   s('ins').textContent   = fmt(ins);
+  if(s('grand')) s('grand').textContent = fmt(grand);
+  if(s('htot'))  s('htot').textContent  = fmt(grand);
+  isDirty = true;
+}
+
+function renderAmendments() {
+  const container = document.getElementById('vn-list');
+  if (!container) return;
+  if (!amendments.length) {
+    container.innerHTML = '<div class="vn-empty">Žádné vícenáklady.<br>Klikni + Nový vícenáklad níže.</div>';
+    return;
+  }
+  container.innerHTML = amendments.map((am, ai) => {
+    const sub = amSubtotal(am), fee = amFee(am), ins = amIns(am), grand = amGrand(am);
+    const safeN = s => (s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    return `<div class="am-block" id="am-blk-${am.id}">
+      <div class="am-hdr" onclick="document.getElementById('am-body-${am.id}').classList.toggle('open')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="am-label" id="am-lbl-${am.id}">${am.name}</span>
+          ${am.linked?'<span title="Přeneseno do Overcost" style="color:#ffcc00;font-size:11px">🔗</span>':''}
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <span id="am-htot-${am.id}" style="color:#ff9966;font-weight:700;font-size:11px">${fmt(grand)}</span>
+          <span style="color:#555">▼</span>
+        </div>
+      </div>
+      <div class="am-body cat-body open" id="am-body-${am.id}">
+        <div class="am-mini-hdr">
+          <div>
+            <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:3px">NÁZEV</div>
+            <input type="text" value="${safeN(am.name)}" style="font-weight:600;font-size:12px;min-width:200px;"
+              onchange="amendments[${ai}].name=this.value;const l=document.getElementById('am-lbl-${am.id}');if(l)l.textContent=this.value;isDirty=true;">
+          </div>
+          <div>
+            <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:3px">DATUM</div>
+            <input type="text" value="${safeN(am.hdrDate)}" style="width:90px;"
+              onchange="amendments[${ai}].hdrDate=this.value;isDirty=true;">
+          </div>
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:3px">POZNÁMKA / DŮVOD</div>
+            <input type="text" value="${safeN(am.hdrNote)}" placeholder="Popis vícenákladu..." style="width:100%;"
+              onchange="amendments[${ai}].hdrNote=this.value;isDirty=true;">
+          </div>
+        </div>
+        <table>
+          <thead><tr>
+            <th class="thl">Popis</th>
+            <th style="text-align:right;min-width:55px">Qty</th>
+            <th style="text-align:right;min-width:110px">Rate (CZK)</th>
+            <th style="text-align:right;min-width:115px">Částka</th>
+            <th style="width:24px"></th>
+          </tr></thead>
+          <tbody>
+            ${am.rows.map((row,ri)=>`<tr class="${ri%2===0?'even':''}">
+              <td>${makeEditable(row.name,`amendments[${ai}].rows[${ri}].name=v;isDirty=true;`)}</td>
+              <td><input type="number" step="any" value="${row.qty??1}" style="width:100%;text-align:right;"
+                oninput="amendments[${ai}].rows[${ri}].qty=parseFloat(this.value)||0;_amUpdateRow(${ai},${ri});"
+                onchange="renderAmendments();"></td>
+              <td><input type="number" step="any" value="${row.rate??0}" style="width:100%;text-align:right;"
+                oninput="amendments[${ai}].rows[${ri}].rate=parseFloat(this.value)||0;_amUpdateRow(${ai},${ri});"
+                onchange="renderAmendments();"></td>
+              <td id="am-r-${am.id}-${ri}" style="text-align:right;font-weight:600;padding-right:6px">${(parseFloat(row.qty)||0)*(parseFloat(row.rate)||0)?fmt((parseFloat(row.qty)||0)*(parseFloat(row.rate)||0)):'—'}</td>
+              <td><button class="del-sub" onclick="amendments[${ai}].rows.splice(${ri},1);renderAmendments();isDirty=true;">×</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <div class="cat-toolbar">
+          <button class="tbtn" onclick="amendments[${ai}].rows.push({name:'Položka',qty:1,rate:0});renderAmendments();isDirty=true;">+ Řádek</button>
+        </div>
+        <div class="am-footer">
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:5px;font-size:11px;color:#555">
+            <span>Subtotal</span>
+            <span id="am-sub-${am.id}" style="font-weight:600;min-width:110px;text-align:right">${fmt(sub)}</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:4px;font-size:11px;color:#555">
+            <span>Production Fee</span>
+            <input type="number" value="${am.feePct}" step="0.5" style="width:48px;text-align:right;border:1px solid #ddd;border-radius:3px;padding:2px 4px;font-size:10px;"
+              onchange="amendments[${ai}].feePct=parseFloat(this.value)||0;renderAmendments();isDirty=true;">
+            <span style="font-size:10px;color:#aaa">%</span>
+            <span id="am-fee-${am.id}" style="font-weight:600;min-width:110px;text-align:right">${fmt(fee)}</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:10px;font-size:11px;color:#555">
+            <span>Insurance</span>
+            <input type="number" value="${am.insPct}" step="0.1" style="width:48px;text-align:right;border:1px solid #ddd;border-radius:3px;padding:2px 4px;font-size:10px;"
+              onchange="amendments[${ai}].insPct=parseFloat(this.value)||0;renderAmendments();isDirty=true;">
+            <span style="font-size:10px;color:#aaa">%</span>
+            <span id="am-ins-${am.id}" style="font-weight:600;min-width:110px;text-align:right">${fmt(ins)}</span>
+          </div>
+          <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;border-top:1px solid #ddd;padding-top:8px;font-size:13px;font-weight:700">
+            <span>CELKEM BEZ DPH</span>
+            <span id="am-grand-${am.id}" style="color:#ff6b00">${fmt(grand)}</span>
+          </div>
+        </div>
+        <div class="am-actions">
+          <button class="tbtn" style="color:#c44" onclick="if(confirm('Smazat vícenáklad?')){amendments.splice(${ai},1);renderAmendments();isDirty=true;}">Smazat</button>
+          <button class="tbtn" style="color:${am.linked?'#f90':'inherit'}" title="Přenese subtotal do Overcost hlavního rozpočtu"
+            onclick="pushAmendmentToOvercost('${am.id}')">${am.linked?'↻ Aktualizovat v OC':'→ Přenést do OC'}</button>
+          <button class="tbtn" onclick="exportAmendmentPDF('${am.id}')">↗ Export PDF</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pushAmendmentToOvercost(amId) {
+  const am = amendments.find(a=>a.id===amId);
+  if (!am) return;
+  snapshot();
+  // Push subtotal only — main budget adds its own fee/ins on top
+  const sub = amSubtotal(am);
+  const existing = overcostRows.findIndex(r=>r._amId===amId);
+  if (existing >= 0) {
+    overcostRows[existing].amount = sub;
+    overcostRows[existing].name   = am.name;
+  } else {
+    overcostRows.push({name: am.name, amount: sub, _amId: amId});
+  }
+  am.linked = true;
+  if (!overcostMode) {
+    overcostMode = true;
+    document.getElementById('btn-overcost')?.classList.add('mode-on');
+  }
+  renderCats(); renderAmendments(); updateSummaryBar(); isDirty = true;
+}
+
+async function exportAmendmentPDF(amId) {
+  const am = amendments.find(a=>a.id===amId);
+  if (!am) return;
+  if (!window.jspdf) { alert('jsPDF not loaded.'); return; }
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const ML=14, MR=196, PW=210, CW=MR-ML;
+  const g = id=>(document.getElementById(id)||{value:''}).value;
+  const sub=amSubtotal(am), fee=amFee(am), ins=amIns(am), grand=amGrand(am);
+  const fmtP = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ')+' CZK' : '—';
+  let y = 0;
+
+  // Top bar + logo
+  doc.setFillColor(18,18,18); doc.rect(0,0,PW,12,'F');
+  if (typeof _logoB64 !== 'undefined') {
+    const _div = g('h_division')||'armada';
+    doc.addImage(_logoB64,'PNG',ML,1.5,_div==='armadaplus'?10:22,_div==='armadaplus'?6:6.5);
+  }
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('VÍCENÁKLADY / CHANGE ORDER', MR, 7.5, {align:'right'});
+  y = 20;
+
+  // Amendment title
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(255,107,0);
+  doc.text(am.name||'Vícenáklad', ML, y);
+  y += 9;
+
+  // Header info strip
+  const hdrData = [
+    ['PROJEKT', g('h_project')||'—'],
+    ['KLIENT',  g('h_client')||'—'],
+    ['DATUM',   am.hdrDate||'—'],
+    ['VERZE',   g('h_ver')||'—'],
+  ];
+  doc.setFillColor(245,245,245); doc.rect(ML,y,CW,9,'F');
+  hdrData.forEach(([lbl,val],i)=>{
+    const x = ML + i*(CW/4);
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(150,150,150);
+    doc.text(lbl, x+3, y+3.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(25,25,25);
+    doc.text(String(val), x+3, y+7.5);
+  });
+  y += 13;
+
+  // Note line
+  if (am.hdrNote) {
+    doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(80,80,80);
+    doc.text(am.hdrNote, ML, y);
+    y += 7;
+  }
+  y += 2;
+
+  // Column headers bar
+  const C_DESC=ML, C_QTY=128, C_RATE=158, C_AMT=MR;
+  doc.setFillColor(18,18,18); doc.rect(ML,y,CW,7,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(200,200,200);
+  doc.text('POPIS', C_DESC+3, y+4.8);
+  doc.text('QTY', C_QTY, y+4.8, {align:'right'});
+  doc.text('RATE', C_RATE, y+4.8, {align:'right'});
+  doc.text('ČÁSTKA', C_AMT, y+4.8, {align:'right'});
+  y += 8;
+
+  // Item rows
+  am.rows.forEach((row,idx)=>{
+    const qty=parseFloat(row.qty)||0, rate=parseFloat(row.rate)||0, amt=qty*rate;
+    if(!amt && !row.name) return;
+    if(idx%2===0){ doc.setFillColor(252,252,252); doc.rect(ML,y,CW,6.5,'F'); }
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(20,20,20);
+    doc.text(String(row.name||''), C_DESC+3, y+4.5);
+    doc.setFontSize(8); doc.setTextColor(100,100,100);
+    if(qty!==1) doc.text(String(qty), C_QTY, y+4.5, {align:'right'});
+    doc.text(rate!=0?Math.round(rate).toLocaleString('cs-CZ'):'—', C_RATE, y+4.5, {align:'right'});
+    doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+    doc.text(fmtP(amt), C_AMT, y+4.5, {align:'right'});
+    doc.setDrawColor(225,225,225); doc.setLineWidth(0.15); doc.line(ML,y+6.5,MR,y+6.5);
+    y += 7;
+  });
+
+  // Totals
+  y += 6;
+  doc.setDrawColor(180,180,180); doc.setLineWidth(0.3); doc.line(ML,y,MR,y); y += 6;
+  [['Sub-Total', sub],['Production Fee ('+am.feePct+'%)', fee],['Insurance ('+am.insPct+'%)', ins]].forEach(([lbl,val])=>{
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+    doc.text(lbl, MR-60, y, {align:'right'});
+    doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+    doc.text(fmtP(val), MR, y, {align:'right'});
+    y += 7;
+  });
+  doc.setFillColor(18,18,18); doc.rect(ML,y,CW,9,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,107,0);
+  doc.text('CELKEM BEZ DPH', ML+3, y+6);
+  doc.text(fmtP(grand), MR, y+6, {align:'right'});
+
+  const safeName = (am.name||'vn').replace(/\s+/g,'_').replace(/[^\w-]/g,'');
+  doc.save('vn_'+safeName+'.pdf');
+}
+
 // ── FEE / WORKING / ACTUAL HELPERS ───────────────────────────────────────────
 function setWorking(key, val) { snapshot(); const v=parseFloat(val)||0; if(v===0)delete workingData[key]; else workingData[key]=v; updateSummaryBar(); isDirty=true; updateCatHeaderColor(key.split('|')[0]); }
 function setActual(key, val)  { snapshot(); const v=parseFloat(val)||0; if(v===0)delete actualData[key];  else actualData[key]=v;  updateSummaryBar(); isDirty=true; updateCatHeaderColor(key.split('|')[0]); }
@@ -709,7 +990,7 @@ function snapshot(){
   const now=Date.now();
   if(now-_undoLastTs<800) return;
   _undoLastTs=now;
-  _undoHistory.push(JSON.stringify({cats,workingData,actualData,feeExclusions,invoiceChecked,overcostRows,rowNotes}));
+  _undoHistory.push(JSON.stringify({cats,workingData,actualData,feeExclusions,invoiceChecked,overcostRows,rowNotes,amendments}));
   if(_undoHistory.length>60) _undoHistory.shift();
 }
 function undo(){
@@ -717,6 +998,7 @@ function undo(){
   const s=JSON.parse(_undoHistory.pop());
   cats=s.cats; workingData=s.workingData; actualData=s.actualData;
   feeExclusions=s.feeExclusions; invoiceChecked=s.invoiceChecked; overcostRows=s.overcostRows; rowNotes=s.rowNotes||{};
+  amendments=s.amendments||[]; _amSeq=amendments.reduce((m,a)=>Math.max(m,parseInt(a.id.slice(2)||0)+1),1);
   _undoLastTs=0; isDirty=true;
   recalcAllAgencyFees(); renderCats(); updateSummaryBar();
 }
@@ -1169,7 +1451,7 @@ async function addVersion() {
   const maxN = nums.length ? Math.max(...nums) : 0;
   const newFile = `${projName}_v${maxN+1}.json`;
   const hdr = gatherHeader();
-  const payload = { header:hdr, settings:gatherSettings(), cats, workingData, actualData, feeExclusions, invoiceChecked, overcostRows, rowNotes, projectNotes:getProjectNotes() };
+  const payload = { header:hdr, settings:gatherSettings(), cats, workingData, actualData, feeExclusions, invoiceChecked, overcostRows, rowNotes, projectNotes:getProjectNotes(), amendments };
   try {
     currentSnapshots = [];
     const vp = { ...payload, _version:`v${maxN+1}`, _savedAt:new Date().toISOString(), _snapshots:[] };
@@ -1556,7 +1838,7 @@ async function saveData(checkpoint=false) {
   if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
   const hdr = gatherHeader();
   const projName = currentProject || sanitize((hdr.client||'')+'_'+(hdr.project||'')) || sanitize(hdr.client) || 'untitled';
-  const payload = { header:hdr, settings:gatherSettings(), cats, workingData, actualData, feeExclusions, invoiceChecked, overcostRows, rowNotes, projectNotes:getProjectNotes() };
+  const payload = { header:hdr, settings:gatherSettings(), cats, workingData, actualData, feeExclusions, invoiceChecked, overcostRows, rowNotes, projectNotes:getProjectNotes(), amendments };
   const btn = document.getElementById('btn-save');
   if(checkpoint){ btn.classList.add('saving'); btn.textContent='💾 Saving…'; }
   try {
@@ -1736,7 +2018,7 @@ async function saveAsProject() {
   if(!dataLoaded){alert('No data loaded.');return;}
   const h=gatherHeader(), input=await showNewProjectDialog('SAVE AS',h.client,h.agency,h.project); if(!input) return;
   const projName=sanitize((input.client||'')+'_'+(input.project||''))||sanitize(input.client)||'untitled';
-  const payload={header:{...h,...input},settings:gatherSettings(),cats,workingData,actualData,feeExclusions,invoiceChecked,overcostRows,rowNotes,projectNotes:getProjectNotes()};
+  const payload={header:{...h,...input},settings:gatherSettings(),cats,workingData,actualData,feeExclusions,invoiceChecked,overcostRows,rowNotes,projectNotes:getProjectNotes(),amendments};
   try {
     if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
     const vp = { ...payload, _version:'v1', _savedAt:new Date().toISOString(), _snapshots:[] };
@@ -1849,7 +2131,7 @@ function exportProject() {
     settings: gatherSettings(),
     cats, workingData, actualData,
     feeExclusions, invoiceChecked, overcostRows, rowNotes,
-    projectNotes: getProjectNotes()
+    projectNotes: getProjectNotes(), amendments
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
@@ -1892,7 +2174,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 33;
+const APP_BUILD = 34;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2055,6 +2337,7 @@ function applyData(data) {
   workingData=data.workingData||{}; actualData=data.actualData||{}; feeExclusions=data.feeExclusions||{};
   invoiceChecked=data.invoiceChecked||{}; overcostRows=data.overcostRows||[]; rowNotes=data.rowNotes||{};
   setProjectNotes(data.projectNotes||'');
+  amendments=data.amendments||[]; _amSeq=amendments.reduce((m,a)=>Math.max(m,parseInt(a.id.slice(2)||0)+1),1);
   // Overcost mode is NOT auto-enabled on load — user must enable manually
   // (keep mode state as-is; just ensure UI button reflects current state)
   document.getElementById('btn-overcost')?.classList.toggle('mode-on', overcostMode);
@@ -2730,6 +3013,7 @@ function showTab(tab,btn){
   if(btn)btn.classList.add('active');
   else document.querySelector(`.tab[onclick*="${tab}"]`)?.classList.add('active');
   if(tab==='summary')renderSummary();
+  if(tab==='vn')renderAmendments();
 }
 function goToCat(code){
   showTab('budget');
@@ -3599,9 +3883,9 @@ document.addEventListener('keydown',e=>{
   if(tag==='INPUT'||tag==='TEXTAREA'||document.activeElement?.isContentEditable) return;
   const k=e.key?.toLowerCase();
   // Tab shortcuts
-  const tabMap={'b':'budget','p':'header','s':'summary'};
+  const tabMap={'b':'budget','p':'header','s':'summary','v':'vn'};
   const tab=tabMap[k];
-  if(tab){ e.preventDefault(); const btn=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim().startsWith(tab==='budget'?'BUDGET':tab==='header'?'PROJECT':'SUMMARY')); showTab(tab,btn); return; }
+  if(tab){ e.preventDefault(); const btn=[...document.querySelectorAll('.tab')].find(t=>t.textContent.trim().startsWith(tab==='budget'?'BUDGET':tab==='header'?'PROJECT':tab==='summary'?'SUMMARY':'VÍCENÁKLADY')); showTab(tab,btn); return; }
   // Toggle shortcuts
   if(k==='f'){ e.preventDefault(); toggleFeeMode(); return; }
   if(k==='w'){ e.preventDefault(); toggleWorking(); return; }
