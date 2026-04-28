@@ -433,6 +433,10 @@ body.locked .del-sub { display: none; }
       <span>Sub-Total Direct Costs</span>
       <div class="sum-right"><span id="s-subtotal" style="font-weight:700">—</span></div>
     </div>
+    <div class="sum-row" id="sum-oc-row" style="display:none">
+      <span style="color:#ff9966">⚠ Overcost</span>
+      <div class="sum-right"><span id="s-overcost" style="font-weight:700;color:#ff9966">—</span></div>
+    </div>
     <div class="sum-row">
       <span style="display:flex;align-items:center;gap:8px">Production Fee
         <button class="fee-mode-btn" id="fee-mode-btn" onclick="toggleFlatFee()" title="Switch % / fixed amount">→ flat</button>
@@ -643,32 +647,20 @@ function toggleOvercost() {
 }
 function overcostTotal() { return overcostRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0); }
 function overcostGrandTotal() {
-  const tot=overcostTotal();
-  const feePct=(parseFloat(document.getElementById('pct-fee')?.value)||0)/100;
-  const insPct=(parseFloat(document.getElementById('pct-ins')?.value)||0)/100;
-  const ocFee=isFlatFee?0:Math.round(tot*feePct);
-  const ocIns=isInsFlat?0:Math.round(tot*insPct);
-  return tot+ocFee+ocIns;
+  return overcostTotal();
 }
 function renderOvercostBlock() {
   if (!overcostMode) return '';
   const tot = overcostTotal();
-  const feePct=(parseFloat(document.getElementById('pct-fee')?.value)||0)/100;
-  const insPct=(parseFloat(document.getElementById('pct-ins')?.value)||0)/100;
-  const ocFee=isFlatFee?0:Math.round(tot*feePct);
-  const ocIns=isInsFlat?0:Math.round(tot*insPct);
-  const ocGrand=tot+ocFee+ocIns;
   const ocWorking=overcostRows.reduce((s,r)=>s+(parseFloat(r.working)||0),0);
   const ocActual=overcostRows.reduce((s,r)=>s+(parseFloat(r.actual)||0),0);
   const colExtra=(workingMode?1:0)+(actualMode?1:0);
   const colTotal=3+colExtra;
-  const wFeeP=(parseFloat(document.getElementById('pct-fee')?.value)||0)/100;
-  const wInsP=(parseFloat(document.getElementById('pct-ins')?.value)||0)/100;
   let html = `<div class="overcost-block">
     <div class="overcost-hdr" onclick="document.getElementById('overcost-body').classList.toggle('open')">
       <div><span class="overcost-label">⚠ OVERCOST</span></div>
       <div style="display:flex;align-items:center;gap:8px">
-        <span class="overcost-total" id="overcost-total">${fmt(ocGrand)}</span>
+        <span class="overcost-total" id="overcost-total">${fmt(tot)}</span>
         <span style="color:#ff9966">▼</span>
       </div>
     </div>
@@ -687,30 +679,18 @@ function renderOvercostBlock() {
   overcostRows.forEach((row, ri) => {
     html += `<tr class="${ri%2===0?'even':''}">
       <td>${makeEditable(row.name, `overcostRows[${ri}].name=v;isDirty=true;`)}</td>
-      <td><input type="number" value="${row.amount||0}" style="width:100%;text-align:right;padding:2px 4px;font-size:11px;border:1px solid #f5c5a5;border-radius:3px;font-family:inherit;background:#fff8f6;" oninput="overcostRows[${ri}].amount=parseFloat(this.value)||0;renderCats();isDirty=true;"></td>
+      <td><input type="number" value="${row.amount||0}" style="width:100%;text-align:right;padding:2px 4px;font-size:11px;border:1px solid #f5c5a5;border-radius:3px;font-family:inherit;background:#fff8f6;" oninput="overcostRows[${ri}].amount=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;" onchange="renderCats();"></td>
       ${workingMode?`<td class="td-work"><input class="working-inp" type="number" value="${row.working||0}" style="width:100%;" oninput="overcostRows[${ri}].working=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;"></td>`:''}
       ${actualMode?`<td class="td-actual"><input class="actual-inp" type="number" value="${row.actual||0}" style="width:100%;" oninput="overcostRows[${ri}].actual=parseFloat(this.value)||0;updateSummaryBar();isDirty=true;"></td>`:''}
       <td><button class="del-sub" onclick="overcostRows.splice(${ri},1);renderCats();isDirty=true;">×</button></td>
     </tr>`;
   });
   if (!overcostRows.length) html += `<tr><td colspan="${colTotal}" style="color:#ccc;text-align:center;padding:12px;font-size:10px">No items — click + Add</td></tr>`;
-  if (!isFlatFee && feePct>0) html+=`<tr style="background:#f9ece6">
-    <td style="color:#c88;font-size:10px;padding-left:8px">Production Fee (${Math.round(feePct*100)}%)</td>
-    <td style="text-align:right;color:#c88;font-weight:600;padding-right:6px;font-size:10px">${fmt(ocFee)}</td>
-    ${workingMode?`<td class="td-work" style="text-align:right;color:#aaa;font-size:10px;padding-right:6px">${ocWorking>0?fmt(Math.round(ocWorking*wFeeP)):''}</td>`:''}
-    ${actualMode?`<td class="td-actual" style="text-align:right;color:#aaa;font-size:10px;padding-right:6px">${ocActual>0?fmt(Math.round(ocActual*wFeeP)):''}</td>`:''}
-    <td></td></tr>`;
-  if (!isInsFlat && insPct>0) html+=`<tr style="background:#f9ece6">
-    <td style="color:#c88;font-size:10px;padding-left:8px">Insurance (${(insPct*100).toFixed(1)}%)</td>
-    <td style="text-align:right;color:#c88;font-weight:600;padding-right:6px;font-size:10px">${fmt(ocIns)}</td>
-    ${workingMode?`<td class="td-work" style="text-align:right;color:#aaa;font-size:10px;padding-right:6px">${ocWorking>0?fmt(Math.round(ocWorking*wInsP)):''}</td>`:''}
-    ${actualMode?`<td class="td-actual" style="text-align:right;color:#aaa;font-size:10px;padding-right:6px">${ocActual>0?fmt(Math.round(ocActual*wInsP)):''}</td>`:''}
-    <td></td></tr>`;
   if(overcostRows.length>0) html+=`<tr style="background:#3a0f00">
     <td style="color:#ff9966;font-weight:700;font-size:10px;letter-spacing:1px">TOTAL</td>
-    <td style="color:#ff9966;font-weight:700;text-align:right;padding-right:6px">${fmt(ocGrand)}</td>
-    ${workingMode?`<td style="color:#ff9966;font-weight:700;text-align:right;padding-right:6px">${ocWorking>0?fmt(Math.round(ocWorking*(1+wFeeP+wInsP))):''}</td>`:''}
-    ${actualMode?`<td style="color:#ff9966;font-weight:700;text-align:right;padding-right:6px">${ocActual>0?fmt(Math.round(ocActual*(1+wFeeP+wInsP))):''}</td>`:''}
+    <td style="color:#ff9966;font-weight:700;text-align:right;padding-right:6px">${fmt(tot)}</td>
+    ${workingMode?`<td style="color:#ff9966;font-weight:700;text-align:right;padding-right:6px">${ocWorking>0?fmt(ocWorking):''}</td>`:''}
+    ${actualMode?`<td style="color:#ff9966;font-weight:700;text-align:right;padding-right:6px">${ocActual>0?fmt(ocActual):''}</td>`:''}
     <td></td></tr>`;
   html += `</tbody></table></div></div>`;
   return html;
@@ -1102,18 +1082,18 @@ function feeBase() {
   return base;
 }
 function workingFeeBase() {
-  if (!Object.keys(feeExclusions).length) return workingTotal();
+  const ocW = overcostMode ? overcostRows.reduce((s,r)=>s+(parseFloat(r.working)||0),0) : 0;
+  if (!Object.keys(feeExclusions).length) return workingTotal() - ocW;
   return Object.entries(workingData)
     .filter(([k,v])=>!k.startsWith('__')&&typeof v==='number'&&!feeExclusions[k])
-    .reduce((s,[,v])=>s+v,0)
-    + overcostRows.reduce((s,r)=>s+(parseFloat(r.working)||0),0);
+    .reduce((s,[,v])=>s+v,0);
 }
 function actualFeeBase() {
-  if (!Object.keys(feeExclusions).length) return actualTotal();
+  const ocA = overcostMode ? overcostRows.reduce((s,r)=>s+(parseFloat(r.actual)||0),0) : 0;
+  if (!Object.keys(feeExclusions).length) return actualTotal() - ocA;
   return Object.entries(actualData)
     .filter(([k,v])=>!k.startsWith('__')&&typeof v==='number'&&!feeExclusions[k])
-    .reduce((s,[,v])=>s+v,0)
-    + overcostRows.reduce((s,r)=>s+(parseFloat(r.actual)||0),0);
+    .reduce((s,[,v])=>s+v,0);
 }
 
 // ── TOGGLES ───────────────────────────────────────────────────────────────────
@@ -1911,7 +1891,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 30;
+const APP_BUILD = 31;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2612,7 +2592,7 @@ function toggleCat(code){const b=document.getElementById('body-'+code),a=documen
 // ── SUMMARY ───────────────────────────────────────────────────────────────────
 function updateSummaryBar(){
   const sub=totalAll();
-  const ocTot=overcostTotal();
+  const ocTot=overcostMode?overcostTotal():0;
   const feePct=(parseFloat(document.getElementById('pct-fee').value)||0)/100;
   const insPct=(parseFloat(document.getElementById('pct-ins').value)||0)/100;
   const fee = isFlatFee
@@ -2621,10 +2601,14 @@ function updateSummaryBar(){
   const ins = isInsFlat
     ? (parseFloat(document.getElementById('ins-flat-amt')?.value)||0)
     : Math.round(sub*insPct);
-  const grand=sub+fee+ins;
+  const grand=sub+ocTot+fee+ins;
 
   const fmtBoth=n=>{let s=fmt(n);if(altEnabled())s+=` <span style="color:#555;font-size:10px">(${fmtAlt(n)})</span>`;return s;};
   document.getElementById('s-subtotal').innerHTML=fmtBoth(sub);
+  const ocRow=document.getElementById('sum-oc-row');
+  if(ocRow){ocRow.style.display=overcostMode&&ocTot>0?'flex':'none';const ocEl=document.getElementById('s-overcost');if(ocEl)ocEl.innerHTML=fmtBoth(ocTot);}
+  const ocHdrEl=document.getElementById('overcost-total');
+  if(ocHdrEl)ocHdrEl.textContent=fmt(ocTot);
   document.getElementById('s-fee').innerHTML=fmtBoth(fee);
   document.getElementById('s-ins').innerHTML=fmtBoth(ins);
   document.getElementById('s-grand').innerHTML=fmtBoth(grand);
@@ -2822,11 +2806,12 @@ function exportPDF(){
   const feePct = parseFloat(g('pct-fee'))||15;
   const insPct  = parseFloat(g('pct-ins'))||1;
   const subTot  = totalAll();
+  const ocSubTot = overcostMode ? overcostTotal() : 0;
   const fee  = isFlatFee ? (parseFloat(g('fee-flat-amt'))||0) : Math.round(feeBase()*feePct/100);
   const ins  = isInsFlat ? (parseFloat(g('ins-flat-amt'))||0) : Math.round(subTot*insPct/100);
-  const grand = subTot+fee+ins;
+  const grand = subTot+ocSubTot+fee+ins;
   // Actual totals — use same functions as the app to respect feeExclusions and overcost rows
-  const actSubTot = showActualPDF ? actualTotal() : 0;
+  const actSubTot = showActualPDF ? actualTotal() : 0;  // actualTotal() already includes overcost actual
   const actFee    = showActualPDF ? (isFlatFee ? fee : Math.round(actualFeeBase()*feePct/100)) : 0;
   const actIns    = showActualPDF ? (isInsFlat ? ins : Math.round(actSubTot*insPct/100)) : 0;
   const actGrand  = actSubTot + actFee + actIns;
@@ -3090,6 +3075,7 @@ function exportPDF(){
     y+=isLast?7:6.5;
   }
   drawTotalLine('Sub-Total Direct Costs', subTot, actSubTot);
+  if(ocSubTot>0){ doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(255,107,0);doc.text('⚠ Overcost',ML,y);doc.setFont('helvetica','bold');doc.text(fmt(ocSubTot),TOT_CZK,y,{align:'right'});if(showAlt&&ocSubTot>0){doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(130,130,130);doc.text(fmtAltPDF(ocSubTot),TOT_ALT,y,{align:'right'});}y+=6.5; }
   drawTotalLine('Production Fee', fee, actFee);
   drawTotalLine('Insurance', ins, actIns, true);
   doc.setFillColor(18,18,18); doc.rect(ML,y,CW,9,'F');
@@ -3269,13 +3255,55 @@ function exportPDF(){
     }
   });
 
+  // ── OVERCOST BLOCK (detail pages) ─────────────────────────────────────────
+  if(overcostMode && overcostRows.length>0){
+    const _ocTot=overcostTotal();
+    if(_ocTot>0){
+      chk(BH+1+overcostRows.length*RH+TH+4);
+      // header bar
+      doc.setFillColor(58,15,0); doc.rect(ML,y,CW,BH,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,153,102);
+      doc.text('⚠', ML+2, y+5.5);
+      doc.setFontSize(8); doc.text('OVERCOST', ML+8, y+5.5);
+      doc.text(fmt(_ocTot), TOT_CZK, y+5.5, {align:'right'});
+      if(showAlt){ doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(180,130,100); doc.text(fmtAltPDF(_ocTot), TOT_ALT, y+5.5, {align:'right'}); }
+      y+=BH+1;
+      // rows
+      overcostRows.forEach((row,ri)=>{
+        const amt=parseFloat(row.amount)||0;
+        if(!amt) return;
+        const _aV=parseFloat(row.actual)||0;
+        chk(RH+0.5);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(20,20,20);
+        doc.text(String(row.name||'Item'), ML+13, y+4.5);
+        doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+        doc.text(fmtRow(amt), TOT_CZK, y+4.5, {align:'right'});
+        pAlt(amt,y+4.5); pActual(_aV,y+4.5);
+        y+=RH; drawSep(); y+=0.5;
+      });
+      // total row
+      doc.setFillColor(58,15,0); doc.rect(ML,y,CW,TH,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,153,102);
+      doc.text('OVERCOST TOTAL', ML+2, y+5);
+      doc.text(fmt(_ocTot), TOT_CZK, y+5, {align:'right'});
+      if(showAlt){ doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(180,130,100); doc.text(fmtAltPDF(_ocTot), TOT_ALT, y+5, {align:'right'}); }
+      const _ocActual=overcostRows.reduce((s,r)=>s+(parseFloat(r.actual)||0),0);
+      if(showActualPDF&&_ocActual>0){ doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(255,107,0); doc.text(Math.round(_ocActual).toLocaleString('cs-CZ')+' CZK', ACT_CTR, y+5, {align:'center'}); }
+      y+=TH+4;
+    }
+  }
+
   // ── FINAL SUMMARY ─────────────────────────────────────────────────────────
-  chk(52);
+  chk(52+(ocSubTot>0?7:0));
   doc.setDrawColor(170,170,170); doc.setLineWidth(0.3); doc.line(ML,y,MR,y); y+=7;
-  [[`Sub-Total Direct Costs`,subTot,actSubTot],[`Production Fee`,fee,actFee],[`Insurance`,ins,actIns]].forEach(([lbl,val,actVal])=>{
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+  const _summaryLines=[['Sub-Total Direct Costs',subTot,actSubTot]];
+  if(ocSubTot>0) _summaryLines.push(['⚠ Overcost',ocSubTot,0]);
+  _summaryLines.push(['Production Fee',fee,actFee],['Insurance',ins,actIns]);
+  _summaryLines.forEach(([lbl,val,actVal])=>{
+    const _isOC=(lbl==='⚠ Overcost');
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(_isOC?255:30,_isOC?107:30,_isOC?0:30);
     doc.text(lbl, ML, y);
-    doc.setFont('helvetica','bold'); doc.text(fmt(val), TOT_CZK, y, {align:'right'});
+    doc.setFont('helvetica','bold'); doc.setTextColor(_isOC?255:20,_isOC?107:20,_isOC?0:20); doc.text(fmt(val), TOT_CZK, y, {align:'right'});
     if(showAlt&&val>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(130,130,130); doc.text(fmtAltPDF(val), TOT_ALT, y, {align:'right'}); }
     if(showActualPDF&&actVal>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,107,0); doc.text(fmt(actVal), ACT_CTR, y, {align:'center'}); }
     y+=7;
@@ -3309,11 +3337,12 @@ async function exportExcel(){
   wb.creator='Armada Films'; wb.created=new Date();
   const g=id=>(document.getElementById(id)||{value:''}).value;
   const sub=totalAll();
+  const ocE=overcostMode?overcostTotal():0;
   const feePct=parseFloat(g('pct-fee'))||15;
   const insPct=parseFloat(g('pct-ins'))||1;
   const fee=isFlatFee?(parseFloat(g('fee-flat-amt'))||0):Math.round(feeBase()*feePct/100);
   const ins=isInsFlat?(parseFloat(g('ins-flat-amt'))||0):Math.round(sub*insPct/100);
-  const grand=sub+fee+ins;
+  const grand=sub+ocE+fee+ins;
   const showAltE=altEnabled();
   const altNE=altName();
   const altRE=parseFloat(document.getElementById('alt_rate')?.value)||25;
@@ -3395,6 +3424,7 @@ async function exportExcel(){
     r.getCell(2).alignment={horizontal:'left'}; r.height=bold?18:14;
   };
   addS1Tot('Sub-Total Direct Costs',sub,false);
+  if(ocE>0) addS1Tot('⚠ Overcost',ocE,false);
   addS1Tot('Production Fee ('+feePct+'%)',fee,false);
   addS1Tot('Insurance ('+insPct+'%)',ins,false);
   addS1Tot('GRAND TOTAL WITHOUT VAT',grand,true);
