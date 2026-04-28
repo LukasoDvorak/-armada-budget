@@ -1892,7 +1892,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 28;
-const APP_BUILD = 32;
+const APP_BUILD = 33;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2817,10 +2817,10 @@ function exportPDF(){
   const actIns    = showActualPDF ? (isInsFlat ? ins : Math.round(actSubTot*insPct/100)) : 0;
   const actGrand  = actSubTot + actFee + actIns;
 
-  const fmt    = n => n>0 ? Math.round(n).toLocaleString('cs-CZ')+' CZK' : '—';
-  const fmtN   = n => n>0 ? Math.round(n).toLocaleString('cs-CZ') : '—';
+  const fmt    = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ')+' CZK' : '—';
+  const fmtN   = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ') : '—';
   // In detail rows, drop ' CZK' from budget total when actual column is present (saves space)
-  const fmtRow = n => n>0 ? Math.round(n).toLocaleString('cs-CZ')+(showActualPDF?'':' CZK') : '—';
+  const fmtRow = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ')+(showActualPDF?'':' CZK') : '—';
   // helper: print alt value in small grey at right margin
   function pAlt(val,yy){
     if(!showAlt||!(val>0))return;
@@ -3060,9 +3060,19 @@ function exportPDF(){
     doc.text(cat.label.toUpperCase(), ML+13, y+4.5);
     doc.setFont('helvetica','bold'); doc.text(fmt(tot), TOT_CZK, y+4.5, {align:'right'});
     if(showAlt&&tot>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text(fmtAltPDF(tot), TOT_ALT, y+4.5, {align:'right'}); }
-    if(showActualPDF){const _acat=getCatActual(cat);if(_acat>0){doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_acat).toLocaleString('cs-CZ')+' CZK',ACT_CTR,y+4.5,{align:'center'});}}
+    if(showActualPDF){const _acat=getCatActual(cat);if(_acat!=0){doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_acat).toLocaleString('cs-CZ')+' CZK',ACT_CTR,y+4.5,{align:'center'});}}
     y+=RH; drawSep(); y+=0.5;
   });
+  // Overcost row in category table
+  if(overcostMode && ocSubTot!==0){
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,107,0);
+    doc.text('OC', ML+2, y+4.5);
+    doc.setFont('helvetica','normal'); doc.text('⚠ OVERCOST', ML+13, y+4.5);
+    doc.setFont('helvetica','bold'); doc.text(fmt(ocSubTot), TOT_CZK, y+4.5, {align:'right'});
+    if(showAlt&&ocSubTot!=0){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text(fmtAltPDF(ocSubTot), TOT_ALT, y+4.5, {align:'right'}); }
+    if(showActualPDF){ const _ocA=overcostRows.reduce((s,r)=>s+(parseFloat(r.actual)||0),0); if(_ocA!=0){ doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_ocA).toLocaleString('cs-CZ')+' CZK',ACT_CTR,y+4.5,{align:'center'}); } }
+    y+=RH; drawSep(); y+=0.5;
+  }
   y+=4;
   doc.setDrawColor(130,130,130); doc.setLineWidth(0.4); doc.line(ML,y,MR,y); y+=7;
 
@@ -3076,7 +3086,7 @@ function exportPDF(){
     y+=isLast?7:6.5;
   }
   drawTotalLine('Sub-Total Direct Costs', subTot, actSubTot);
-  if(ocSubTot>0){ doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(255,107,0);doc.text('⚠ Overcost',ML,y);doc.setFont('helvetica','bold');doc.text(fmt(ocSubTot),TOT_CZK,y,{align:'right'});if(showAlt&&ocSubTot>0){doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(130,130,130);doc.text(fmtAltPDF(ocSubTot),TOT_ALT,y,{align:'right'});}y+=6.5; }
+  if(ocSubTot!==0){ doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(255,107,0);doc.text('⚠ Overcost',ML,y);doc.setFont('helvetica','bold');doc.text(fmt(ocSubTot),TOT_CZK,y,{align:'right'});if(showAlt&&ocSubTot!=0){doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(130,130,130);doc.text(fmtAltPDF(ocSubTot),TOT_ALT,y,{align:'right'});}y+=6.5; }
   drawTotalLine('Production Fee', fee, actFee);
   drawTotalLine('Insurance', ins, actIns, true);
   doc.setFillColor(18,18,18); doc.rect(ML,y,CW,9,'F');
@@ -3259,7 +3269,7 @@ function exportPDF(){
   // ── OVERCOST BLOCK (detail pages) ─────────────────────────────────────────
   if(overcostMode && overcostRows.length>0){
     const _ocTot=overcostTotal();
-    if(_ocTot>0){
+    if(_ocTot!==0){
       chk(BH+1+overcostRows.length*RH+TH+4);
       // header bar
       doc.setFillColor(58,15,0); doc.rect(ML,y,CW,BH,'F');
@@ -3298,7 +3308,7 @@ function exportPDF(){
   chk(52+(ocSubTot>0?7:0));
   doc.setDrawColor(170,170,170); doc.setLineWidth(0.3); doc.line(ML,y,MR,y); y+=7;
   const _summaryLines=[['Sub-Total Direct Costs',subTot,actSubTot]];
-  if(ocSubTot>0) _summaryLines.push(['⚠ Overcost',ocSubTot,0]);
+  if(ocSubTot!==0) _summaryLines.push(['⚠ Overcost',ocSubTot,0]);
   _summaryLines.push(['Production Fee',fee,actFee],['Insurance',ins,actIns]);
   _summaryLines.forEach(([lbl,val,actVal])=>{
     const _isOC=(lbl==='⚠ Overcost');
