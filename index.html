@@ -500,7 +500,7 @@ body.locked .del-sub { display: none; }
 <div id="panel-vn" class="panel">
   <div id="vn-list"></div>
   <div style="padding:4px 0 8px">
-    <button class="btn" onclick="addAmendment()">+ Nový vícenáklad</button>
+    <button class="btn" onclick="addAmendment()">+ New CE</button>
   </div>
 </div>
 
@@ -727,10 +727,10 @@ function addAmendment() {
   const insPct = parseFloat(document.getElementById('pct-ins')?.value)||1;
   amendments.push({
     id: _amNewId(),
-    name: 'Vícenáklad ' + (amendments.length + 1),
+    name: 'CE ' + (amendments.length + 1),
     hdrDate: new Date().toLocaleDateString('cs-CZ'),
     hdrNote: '',
-    rows: [{name:'Položka',qty:1,rate:0}],
+    rows: [{name:'Item',qty:1,rate:0}],
     feePct,
     insPct,
     linked: false
@@ -767,7 +767,7 @@ function renderAmendments() {
   const container = document.getElementById('vn-list');
   if (!container) return;
   if (!amendments.length) {
-    container.innerHTML = '<div class="vn-empty">Žádné vícenáklady.<br>Klikni + Nový vícenáklad níže.</div>';
+    container.innerHTML = '<div class="vn-empty">No change orders yet.<br>Click + New CE below.</div>';
     return;
   }
   container.innerHTML = amendments.map((am, ai) => {
@@ -777,7 +777,7 @@ function renderAmendments() {
       <div class="am-hdr" onclick="document.getElementById('am-body-${am.id}').classList.toggle('open')">
         <div style="display:flex;align-items:center;gap:8px">
           <span class="am-label" id="am-lbl-${am.id}">${am.name}</span>
-          ${am.linked?'<span title="Přeneseno do Overcost" style="color:#ffcc00;font-size:11px">🔗</span>':''}
+          ${am.linked?'<span title="Linked to Overcost" style="color:#ffcc00;font-size:11px">🔗</span>':''}
         </div>
         <div style="display:flex;align-items:center;gap:14px">
           <span id="am-htot-${am.id}" style="color:#ff9966;font-weight:700;font-size:11px">${fmt(grand)}</span>
@@ -787,27 +787,27 @@ function renderAmendments() {
       <div class="am-body cat-body open" id="am-body-${am.id}">
         <div class="am-mini-hdr">
           <div>
-            <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:3px">NÁZEV</div>
+            <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:3px">NAME</div>
             <input type="text" value="${safeN(am.name)}" style="font-weight:600;font-size:12px;min-width:200px;"
               onchange="amendments[${ai}].name=this.value;const l=document.getElementById('am-lbl-${am.id}');if(l)l.textContent=this.value;isDirty=true;">
           </div>
           <div>
-            <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:3px">DATUM</div>
+            <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:3px">DATE</div>
             <input type="text" value="${safeN(am.hdrDate)}" style="width:90px;"
               onchange="amendments[${ai}].hdrDate=this.value;isDirty=true;">
           </div>
           <div style="flex:1;min-width:180px">
-            <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:3px">POZNÁMKA / DŮVOD</div>
-            <input type="text" value="${safeN(am.hdrNote)}" placeholder="Popis vícenákladu..." style="width:100%;"
+            <div style="font-size:9px;color:#999;letter-spacing:1px;margin-bottom:3px">NOTE / REASON</div>
+            <input type="text" value="${safeN(am.hdrNote)}" placeholder="Description..." style="width:100%;"
               onchange="amendments[${ai}].hdrNote=this.value;isDirty=true;">
           </div>
         </div>
         <table>
           <thead><tr>
-            <th class="thl">Popis</th>
+            <th class="thl">Description</th>
             <th style="text-align:right;min-width:55px">Qty</th>
             <th style="text-align:right;min-width:110px">Rate (CZK)</th>
-            <th style="text-align:right;min-width:115px">Částka</th>
+            <th style="text-align:right;min-width:115px">Amount</th>
             <th style="width:24px"></th>
           </tr></thead>
           <tbody>
@@ -825,7 +825,7 @@ function renderAmendments() {
           </tbody>
         </table>
         <div class="cat-toolbar">
-          <button class="tbtn" onclick="amendments[${ai}].rows.push({name:'Položka',qty:1,rate:0});renderAmendments();isDirty=true;">+ Řádek</button>
+          <button class="tbtn" onclick="amendments[${ai}].rows.push({name:'Item',qty:1,rate:0});renderAmendments();isDirty=true;">+ Row</button>
         </div>
         <div class="am-footer">
           <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:5px;font-size:11px;color:#555">
@@ -847,14 +847,14 @@ function renderAmendments() {
             <span id="am-ins-${am.id}" style="font-weight:600;min-width:110px;text-align:right">${fmt(ins)}</span>
           </div>
           <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;border-top:1px solid #ddd;padding-top:8px;font-size:13px;font-weight:700">
-            <span>CELKEM BEZ DPH</span>
+            <span>TOTAL EX VAT</span>
             <span id="am-grand-${am.id}" style="color:#ff6b00">${fmt(grand)}</span>
           </div>
         </div>
         <div class="am-actions">
-          <button class="tbtn" style="color:#c44" onclick="if(confirm('Smazat vícenáklad?')){amendments.splice(${ai},1);renderAmendments();isDirty=true;}">Smazat</button>
-          <button class="tbtn" style="color:${am.linked?'#f90':'inherit'}" title="Přenese subtotal do Overcost hlavního rozpočtu"
-            onclick="pushAmendmentToOvercost('${am.id}')">${am.linked?'↻ Aktualizovat v OC':'→ Přenést do OC'}</button>
+          <button class="tbtn" style="color:#c44" onclick="if(confirm('Delete CE?')){amendments.splice(${ai},1);renderAmendments();isDirty=true;}">Delete</button>
+          <button class="tbtn" style="color:${am.linked?'#f90':'inherit'}" title="Push subtotal to main budget Overcost"
+            onclick="pushAmendmentToOvercost('${am.id}')">${am.linked?'↻ Update in OC':'→ Push to OC'}</button>
           <button class="tbtn" onclick="exportAmendmentPDF('${am.id}')">↗ Export PDF</button>
         </div>
       </div>
@@ -897,25 +897,24 @@ async function exportAmendmentPDF(amId) {
 
   // Top bar + logo
   doc.setFillColor(18,18,18); doc.rect(0,0,PW,12,'F');
-  if (typeof _logoB64 !== 'undefined') {
-    const _div = g('h_division')||'armada';
-    doc.addImage(_logoB64,'PNG',ML,1.5,_div==='armadaplus'?10:22,_div==='armadaplus'?6:6.5);
+  const _div = g('h_division')||'armada';
+  const _amLogoB64 = _div==='armadaplus' ? ARMADA_PLUS_LOGO_B64 : ARMADA_LOGO_B64;
+  if (typeof _amLogoB64 !== 'undefined') {
+    doc.addImage(_amLogoB64,'PNG',ML,1.5,_div==='armadaplus'?10:22,_div==='armadaplus'?6:6.5);
   }
-  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
-  doc.text('VÍCENÁKLADY / CHANGE ORDER', MR, 7.5, {align:'right'});
   y = 20;
 
   // Amendment title
   doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(255,107,0);
-  doc.text(am.name||'Vícenáklad', ML, y);
+  doc.text(am.name||'CE', ML, y);
   y += 9;
 
   // Header info strip
   const hdrData = [
-    ['PROJEKT', g('h_project')||'—'],
-    ['KLIENT',  g('h_client')||'—'],
-    ['DATUM',   am.hdrDate||'—'],
-    ['VERZE',   g('h_ver')||'—'],
+    ['PROJECT', g('h_project')||'—'],
+    ['CLIENT',  g('h_client')||'—'],
+    ['DATE',    am.hdrDate||'—'],
+    ['VERSION', g('h_ver')||'—'],
   ];
   doc.setFillColor(245,245,245); doc.rect(ML,y,CW,9,'F');
   hdrData.forEach(([lbl,val],i)=>{
@@ -939,10 +938,10 @@ async function exportAmendmentPDF(amId) {
   const C_DESC=ML, C_QTY=128, C_RATE=158, C_AMT=MR;
   doc.setFillColor(18,18,18); doc.rect(ML,y,CW,7,'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(200,200,200);
-  doc.text('POPIS', C_DESC+3, y+4.8);
+  doc.text('DESCRIPTION', C_DESC+3, y+4.8);
   doc.text('QTY', C_QTY, y+4.8, {align:'right'});
   doc.text('RATE', C_RATE, y+4.8, {align:'right'});
-  doc.text('ČÁSTKA', C_AMT, y+4.8, {align:'right'});
+  doc.text('AMOUNT', C_AMT, y+4.8, {align:'right'});
   y += 8;
 
   // Item rows
@@ -953,7 +952,7 @@ async function exportAmendmentPDF(amId) {
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(20,20,20);
     doc.text(String(row.name||''), C_DESC+3, y+4.5);
     doc.setFontSize(8); doc.setTextColor(100,100,100);
-    if(qty!==1) doc.text(String(qty), C_QTY, y+4.5, {align:'right'});
+    doc.text(String(qty), C_QTY, y+4.5, {align:'right'});
     doc.text(rate!=0?Math.round(rate).toLocaleString('cs-CZ'):'—', C_RATE, y+4.5, {align:'right'});
     doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
     doc.text(fmtP(amt), C_AMT, y+4.5, {align:'right'});
@@ -973,7 +972,7 @@ async function exportAmendmentPDF(amId) {
   });
   doc.setFillColor(18,18,18); doc.rect(ML,y,CW,9,'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,107,0);
-  doc.text('CELKEM BEZ DPH', ML+3, y+6);
+  doc.text('TOTAL EX VAT', ML+3, y+6);
   doc.text(fmtP(grand), MR, y+6, {align:'right'});
 
   const safeName = (am.name||'vn').replace(/\s+/g,'_').replace(/[^\w-]/g,'');
@@ -2177,7 +2176,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 5;
+const APP_BUILD = 6;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
