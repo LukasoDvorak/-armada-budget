@@ -1978,7 +1978,7 @@ async function loadVersionByIndex(idx) {
     snapshotIndex = -1;
     document.getElementById('snap-nav').style.display = 'none';
     applyData(data);
-    autosaveLoaded=false; versionIndex=idx; setStatus('loaded ✓ '+formatFilename(file)); renderVersionNav(); isDirty=false;
+    currentVersionFile=file; autosaveLoaded=false; versionIndex=idx; setStatus('loaded ✓ '+formatFilename(file)); renderVersionNav(); isDirty=false;
   } catch(e) { alert('Load error:\n'+e.message); }
 }
 
@@ -2177,7 +2177,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 4;
+const APP_BUILD = 5;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
