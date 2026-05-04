@@ -1634,7 +1634,7 @@ function ctxTalent(e, code, si, ri) {
   // "Add below" guesses row type from neighbor
   const addBelow = row.qty!==undefined ? {name:"New Item",qty:1,rate:0}
                  : row.amount!==undefined ? {name:"New Item",amount:0}
-                 : {name:"New Talent",subs:[["Daily Fee",1,0],["Agency Fee 20%",1,0,true]]};
+                 : {name:"New Talent",subs:[["Daily Fee",1,0],["Buyout",1,0],["Agency Fee 20%",1,0,true]]};
   items.push({ label:'+ Add row below', fn:()=>{ cat.sections[si].rows.splice(ri+1,0,JSON.parse(JSON.stringify(addBelow))); renderCats(); isDirty=true; }});
   if(!isLocked){ items.push({ sep:true }); items.push({ label:'× Delete row', del:true, fn:()=>{ purgeKey(crewKey(code,si,ri)); cat.sections[si].rows.splice(ri,1); reindexCrewKeys(code,si,ri); renderCats(); isDirty=true; }}); }
   showCtx(e, items);
@@ -2176,7 +2176,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 6;
+const APP_BUILD = 7;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2806,7 +2806,7 @@ function renderCats() {
               const dndSub=`draggable="true" ondragstart="onDragStartSub(event,'${cat.code}',${si},${ri},${k})" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDropSub(event,'${cat.code}',${si},${ri},${k})"`;
               html+=`<tr class="sub-row" ${dndSub}><td class="drag-col" style="font-size:10px">⠿</td>
                 <td class="sub-label" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-                  <span>${lbl}</span>
+                  ${makeEditable(lbl,`cats.find(c=>c.code==='${cat.code}').sections[${si}].rows[${ri}].subs[${k}][0]=v;isDirty=true;`)}
                   <button class="del-sub" onclick="deleteTalentSub('${cat.code}',${si},${ri},${k})" title="Delete sub-row">×</button>
                   <div class="item-note sub-note" contenteditable="true" onblur="setRowNote('${tsk}',this.textContent.trim())">${rowNotes[tsk]||''}</div>
                 </td>
@@ -2853,7 +2853,7 @@ function addTalentRow(code,si){
   let row;
   if(last?.qty!==undefined) row={name:"New Item",qty:1,rate:0};
   else if(last?.amount!==undefined) row={name:"New Item",amount:0};
-  else row={name:"New Talent",subs:[["Daily Fee",1,0],["Buyout Video",1,0],["Agency Fee 20%",1,0,true]]};
+  else row={name:"New Talent",subs:[["Daily Fee",1,0],["Buyout",1,0],["Agency Fee 20%",1,0,true]]};
   sec.rows.push(row); renderCats(); isDirty=true;
 }
 function addTalentItem(code,si){
@@ -2863,7 +2863,7 @@ function addTalentItem(code,si){
 }
 function addTalentSubs(code,si){
   const cat=cats.find(c=>c.code===code);
-  cat.sections[si].rows.push({name:"New Talent",subs:[["Daily Fee",1,0],["Buyout",1,0],["Overtime",0,0],["Agency Fee 20%",1,0,true]]});
+  cat.sections[si].rows.push({name:"New Talent",subs:[["Daily Fee",1,0],["Buyout",1,0],["Agency Fee 20%",1,0,true]]});
   renderCats(); isDirty=true;
 }
 
