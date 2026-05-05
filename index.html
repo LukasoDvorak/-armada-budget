@@ -2176,7 +2176,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 7;
+const APP_BUILD = 8;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2519,7 +2519,7 @@ function updateTalentSub(code,si,ri,k,f,val){
   row.subs[k][f===0?1:2]=parseFloat(val)||0;
   if(f===1||!row.subs[k][3])recalcAgencyFees(row.subs);
   const el=document.getElementById(`tt-${code}-${si}-${ri}`);if(el)el.textContent=fmt(row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0));
-  row.subs.forEach(([,q,r],idx)=>{const s=document.getElementById(`tsub-${code}-${si}-${ri}-${idx}`);if(s)s.textContent=q*r>0?fmt(q*r):'—';const rl=document.getElementById(`tsub-rate-${code}-${si}-${ri}-${idx}`);if(rl)rl.textContent=r>0?fmt(r):'—';});
+  row.subs.forEach(([,q,r,isAF],idx)=>{const s=document.getElementById(`tsub-${code}-${si}-${ri}-${idx}`);if(s)s.textContent=(isAF?r:q*r)>0?fmt(isAF?r:q*r):'—';const rl=document.getElementById(`tsub-rate-${code}-${si}-${ri}-${idx}`);if(rl)rl.textContent=r>0?fmt(r):'—';});
   isDirty=true;recalcCat(code);
 }
 function updateStd(code,ri,f,val){snapshot();const cat=cats.find(c=>c.code===code);if(f===0)cat.rows[ri][2]=parseFloat(val)||0;else cat.rows[ri][3]=parseFloat(val)||0;const[,,q,r]=cat.rows[ri],el=document.getElementById(`std-${code}-${ri}`);if(el)el.textContent=q*r>0?fmt(q*r):'—';isDirty=true;recalcCat(code);}
@@ -2794,7 +2794,7 @@ function renderCats() {
               <td>${numInp(row.amount,`updateTalentFlat('${cat.code}',${si},${ri},this.value)`)}</td>
               ${extraCols(row.amount,wk)}</tr>`;
           } else {
-            const tt=row.subs.reduce((s,[,q,r])=>s+q*r,0);
+            const tt=talentRowTotal(row);
             html+=`<tr class="van-hdr" ${dnd} oncontextmenu="ctxTalent(event,'${cat.code}',${si},${ri})">
               <td class="drag-col">⠿</td><td colspan="3" style="font-weight:600">${rowCode(cat,++talentCnt.n)}${makeEditable(row.name,`cats.find(c=>c.code==='${cat.code}').sections[${si}].rows[${ri}].name=v`)}<div class="item-note" contenteditable="true" onblur="setRowNote('${wk}',this.textContent.trim())">${rowNotes[wk]||''}</div></td>
               <td class="tdr" style="font-weight:600" id="tt-${cat.code}-${si}-${ri}">${fmt(tt)}</td>
@@ -2812,7 +2812,7 @@ function renderCats() {
                 </td>
                 <td>${isAuto?'<span style="color:#555;font-size:10px">—</span>':numInpRaw(q,`updateTalentSub('${cat.code}',${si},${ri},${k},0,this.value)`)}</td>
                 <td>${rateDisp}</td>
-                <td class="tdr" style="color:#999;font-size:10px" id="tsub-${cat.code}-${si}-${ri}-${k}">${q*r>0?fmt(q*r):'—'}</td>
+                <td class="tdr" style="color:#999;font-size:10px" id="tsub-${cat.code}-${si}-${ri}-${k}">${isAuto?(r>0?fmt(r):'—'):(q*r>0?fmt(q*r):'—')}</td>
                 ${extraEmpty()}</tr>`;
             });
           }
