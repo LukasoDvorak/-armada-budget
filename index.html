@@ -2176,7 +2176,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 8;
+const APP_BUILD = 9;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3838,9 +3838,9 @@ async function exportExcel(){
           if(row.qty!==undefined)addDRow(code,row.name,row.note||'',row.qty,row.rate,'','',row.qty*row.rate);
           else if(row.amount!==undefined)addDRow(code,row.name,'','','','','',row.amount);
           else if(row.subs){
-            const tt=row.subs.reduce((s,[,q,rr])=>s+q*rr,0);
+            const tt=row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0);
             addDRow(code,row.name,'','','','','',tt,false,CL.VB,false);
-            row.subs.forEach(([lbl,q,rr])=>addDRow('','  '+lbl,'',q,rr,'','',q*rr,true));
+            row.subs.forEach(([lbl,q,r,isAF])=>addDRow('','  '+lbl,'',q,r,'','',isAF?r:q*r,true));
           }
         });
       });
