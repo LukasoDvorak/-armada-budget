@@ -123,9 +123,12 @@ tr.selected td { background: #fff3e6 !important; }
 .ver-arrow { background: none; border: 1px solid #333; border-radius: 3px; color: #555; font-size: 12px; width: 22px; height: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-family: inherit; }
 .ver-arrow:hover:not(:disabled) { border-color: #ff6b00; color: #ff6b00; }
 .ver-arrow:disabled { opacity: 0.25; cursor: default; }
-.ver-chip { padding: 3px 8px; border-radius: 3px; font-size: 9px; border: 1px solid #2a2a2a; background: #1e1e1e; color: #555; cursor: pointer; white-space: nowrap; letter-spacing: 0.5px; }
+.ver-chip { padding: 3px 8px; border-radius: 3px; font-size: 9px; border: 1px solid #2a2a2a; background: #1e1e1e; color: #555; cursor: pointer; white-space: nowrap; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; }
 .ver-chip:hover { border-color: #444; color: #aaa; }
 .ver-chip.active { border-color: #ff6b00; color: #ff6b00; background: #1e1000; }
+.ver-label { font-size: 8px; opacity: 0.75; letter-spacing: 0.3px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+.ver-chip.branch { border-style: dashed; }
+.ver-chip.branch.active { border-color: #ff6b00; border-style: dashed; }
 .ver-chip.autosave { border-color: #00aa44; color: #00aa44; background: #001a0a; }
 .snap-nav { display: flex; align-items: center; gap: 4px; width: 100%; padding: 3px 0 0 0; border-top: 1px solid #222; margin-top: 2px; }
 .snap-label { font-size: 9px; color: #888; white-space: nowrap; letter-spacing: 0.3px; min-width: 160px; }
@@ -360,7 +363,9 @@ body.locked .del-sub { display: none; }
       <button onclick="closeDrop('drop-file');editRates()">📋 Rates</button>
       <hr class="sep">
       <button onclick="closeDrop('drop-file');saveAsProject()">⎘ Save As</button>
-      <button onclick="closeDrop('drop-file');addVersion()">⊕ New Version</button>
+      <button id="btn-add-version" onclick="closeDrop('drop-file');addVersion()">⊕ New Version</button>
+      <button id="btn-branch-real" onclick="closeDrop('drop-file');addBranch('real')" style="display:none">⤵ Branch → Real</button>
+      <button id="btn-branch-working" onclick="closeDrop('drop-file');addBranch('working')" style="display:none">⤵ Branch → Working</button>
       <hr class="sep">
       <button id="btn-proj-export" onclick="closeDrop('drop-file');exportProject()">⬇ Export Project</button>
       <button id="btn-proj-import" onclick="closeDrop('drop-file');importProject()">⬆ Import Project</button>
@@ -526,7 +531,7 @@ body.locked .del-sub { display: none; }
 // ── STATE ────────────────────────────────────────────────────────────────────
 let cats = [], dataLoaded = false, isDirty = false;
 let _undoHistory = [], _undoLastTs = 0;
-let currentProject = null, versionList = [], versionIndex = 0, currentVersionFile = null, currentSnapshots = [], snapshotIndex = -1;
+let currentProject = null, versionList = [], versionIndex = 0, currentVersionFile = null, currentSnapshots = [], snapshotIndex = -1, versionLabels = {};
 
 // ── SESSION LOCK ──────────────────────────────────────────────────────────────
 // Per-tab session ID (unique per tab, even on same device)
@@ -1445,9 +1450,53 @@ function toggleLock() {
 }
 
 // ── ADD VERSION ───────────────────────────────────────────────────────────────
+// ── Branch version helpers ──────────────────────────────────────────────────
+function isMainVer(f) { return /_v\d+\.json$/.test((f||'').replace(/.*\//,'')); }
+function isBranchVer(f) { return /_v\d+-(real|working)\.json$/.test((f||'').replace(/.*\//,'')); }
+function baseVerNum(f) { const m=(f||'').replace(/.*\//).match(/_v(\d+)/); return m?parseInt(m[1]):0; }
+function verSortKey(f) {
+  const b=(f||'').replace(/.*\//,'');
+  const bm=b.match(/_v(\d+)-(real|working)\.json$/); if(bm) return [parseInt(bm[1]), bm[2]==='real'?1:2];
+  const vm=b.match(/_v(\d+)\.json$/); if(vm) return [parseInt(vm[1]),0];
+  return [999,3];
+}
+function updateBranchButtons() {
+  const onMain = isMainVer(currentVersionFile);
+  const onBranch = isBranchVer(currentVersionFile);
+  const bv = document.getElementById('btn-add-version');
+  const br = document.getElementById('btn-branch-real');
+  const bw = document.getElementById('btn-branch-working');
+  if(bv) { bv.style.opacity=onBranch?'0.4':'1'; bv.title=onBranch?'Switch to a main version first':''; }
+  if(br) br.style.display=onMain?'block':'none';
+  if(bw) bw.style.display=onMain?'block':'none';
+}
+async function addBranch(type) {
+  if (!dataLoaded) { alert('No data loaded.'); return; }
+  if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
+  if (!isMainVer(currentVersionFile)) { alert('Switch to a main version first (e.g. v3) before branching.'); return; }
+  const projName = currentProject;
+  const base = baseVerNum(currentVersionFile);
+  const newFile = `${projName}_v${base}-${type}.json`;
+  if (versionList.some(f=>f===newFile||f.endsWith('/'+newFile))) {
+    if (!confirm(`v${base}-${type} already exists. Overwrite it with the current state?`)) return;
+  }
+  const hdr = gatherHeader();
+  const payload = { header:hdr, settings:gatherSettings(), cats, workingData, actualData, feeExclusions, invoiceChecked, overcostRows, rowNotes, projectNotes:getProjectNotes(), amendments };
+  try {
+    const vp = { ...payload, _version:`v${base}-${type}`, _savedAt:new Date().toISOString(), _snapshots:[] };
+    await dbxUpload('/projects/'+projName+'/'+newFile, vp);
+    currentVersionFile = newFile; currentSnapshots = []; isDirty=false; autosaveLoaded=false;
+    const sf=newFile; await loadVersionList(projName, true);
+    const ni=versionList.findIndex(f=>f===sf||f.endsWith('/'+sf));
+    versionIndex=ni>=0?ni:0; renderVersionNav(); updateBranchButtons();
+    setStatus(`v${base}-${type} created ✓`);
+  } catch(e) { alert('Error:\n'+e.message); }
+}
+// ── end branch helpers ───────────────────────────────────────────────────────
 async function addVersion() {
   if (!dataLoaded) { alert('No data loaded.'); return; }
   if (!dbxIsConnected()) { alert('Please connect to Dropbox first.'); return; }
+  if (isBranchVer(currentVersionFile)) { alert('Switch to a main version (e.g. v3) before creating a new version.'); return; }
   const projName = currentProject; if (!projName) { alert('No project loaded.'); return; }
   const nums = versionList.map(f=>{ const m=f.match(/_v(\d+)\.json$/); return m?parseInt(m[1]):0; });
   const maxN = nums.length ? Math.max(...nums) : 0;
@@ -1824,6 +1873,9 @@ async function loadProject() {
 function formatFilename(f) {
   const parts = f.split('/');
   const base = parts[parts.length-1];
+  // Branch format: PROJ_v3-real.json -> "v3 · real"
+  const bm = base.match(/_v(\d+)-(real|working)\.json$/);
+  if(bm) return 'v'+bm[1]+' · '+bm[2];
   // New format: PROJ_v1.json -> "v1"
   const vm = base.match(/_v(\d+)\.json$/);
   if(vm) return 'v'+vm[1];
@@ -1851,13 +1903,18 @@ async function saveData(checkpoint=false) {
       if (currentSnapshots.length > 20) currentSnapshots.splice(0, currentSnapshots.length - 20);
     }
     // Single write — autosave updates top-level data, checkpoint also grows _snapshots
-    const vp = { ...payload, _version:currentVersionFile.replace(/_v(\d+)\.json$/,'v$1'), _savedAt:new Date().toISOString(), _snapshots:currentSnapshots };
+    const vp = { ...payload, _version:currentVersionFile.replace(/_v(\d+)-(real|working)\.json$/,'v$1-$2').replace(/_v(\d+)\.json$/,'v$1'), _savedAt:new Date().toISOString(), _snapshots:currentSnapshots };
     await dbxUpload('/projects/'+projName+'/'+currentVersionFile, vp);
     localStorage.setItem('dbx_latest_project', projName); const _po=JSON.parse(localStorage.getItem('proj_order')||'{}');_po[projName]=Date.now();localStorage.setItem('proj_order',JSON.stringify(_po)); dbxUpload('/settings.json', {lastProject:projName}).catch(()=>{});
     setProjectState(projName);
     if(checkpoint){
       setStatus('saved ✓ '+new Date().toLocaleTimeString('en-GB'));
-      autosaveLoaded=false; versionIndex=0; await loadVersionList(projName);
+      autosaveLoaded=false;
+      const savedFile = currentVersionFile||'';
+      await loadVersionList(projName, true); // noRender — we set index first
+      const newIdx = versionList.findIndex(f=>f===savedFile||f.endsWith('/'+savedFile));
+      versionIndex = newIdx>=0 ? newIdx : 0;
+      renderVersionNav();
     } else {
       autosaveTime=new Date(); if(autosaveLoaded) renderVersionNav();
       setStatus('autosaved ✓ '+new Date().toLocaleTimeString('en-GB'));
@@ -1898,11 +1955,16 @@ function pickFromList(title, items, labelFn) {
 function setStatus(msg) { document.getElementById('save-status').textContent = msg; }
 
 // ── VERSION NAVIGATION ────────────────────────────────────────────────────────
-async function loadVersionList(project) {
+async function loadVersionList(project, noRender=false) {
   try {
     versionList = await dbxListProjectFiles(project);
-    renderVersionNav();
+    try { const lb=await dbxDownload('/projects/'+project+'/labels.json'); versionLabels=lb&&typeof lb==='object'?lb:{}; } catch(e){ /* no labels yet */ }
+    if(!noRender) renderVersionNav();
   } catch(e) {}
+}
+async function saveVersionLabels() {
+  if(!currentProject||!dbxIsConnected()) return;
+  try { await dbxUpload('/projects/'+currentProject+'/labels.json', versionLabels); } catch(e){}
 }
 function renderVersionNav() {
   const nav=document.getElementById('ver-nav'), chips=document.getElementById('ver-chips');
@@ -1917,9 +1979,12 @@ function renderVersionNav() {
   for(let i=start;i<end;i++){
     const chip=document.createElement('span');
     const isActive = i===versionIndex;
-    chip.className='ver-chip'+(isActive?' active':'');
-    chip.textContent=formatFilename(versionList[i]); chip.title=isActive&&currentSnapshots.length?'Click to browse snapshots':versionList[i];
+    chip.className='ver-chip'+(isActive?' active':'')+(isBranchVer(versionList[i])?' branch':'');
+    const lbl=versionLabels[versionList[i]]||'';
+    chip.innerHTML=`<span>${formatFilename(versionList[i])}</span>${lbl?`<span class="ver-label">${lbl}</span>`:''}`;
+    chip.title=(lbl?lbl+' · ':'')+( isActive&&currentSnapshots.length?'Click to browse snapshots':'Dbl-click to label');
     const idx=i; chip.onclick=()=>{ if(isActive&&currentSnapshots.length) toggleSnapshotNav(); else { closeSnapshotNav(false); loadVersionByIndex(idx); } };
+    chip.ondblclick=e=>{ e.stopPropagation(); const fn=versionList[idx]; const cur=versionLabels[fn]||''; const nl=prompt('Label for this version (leave empty to remove):',cur); if(nl===null)return; if(nl.trim()) versionLabels[fn]=nl.trim(); else delete versionLabels[fn]; saveVersionLabels(); renderVersionNav(); };
     chips.appendChild(chip);
     if(i<end-1) chips.appendChild(Object.assign(document.createElement('span'),{textContent:' '}));
   }
@@ -1977,7 +2042,7 @@ async function loadVersionByIndex(idx) {
     snapshotIndex = -1;
     document.getElementById('snap-nav').style.display = 'none';
     applyData(data);
-    currentVersionFile=file; autosaveLoaded=false; versionIndex=idx; setStatus('loaded ✓ '+formatFilename(file)); renderVersionNav(); isDirty=false;
+    currentVersionFile=file; autosaveLoaded=false; versionIndex=idx; setStatus('loaded ✓ '+formatFilename(file)); renderVersionNav(); updateBranchButtons(); isDirty=false;
   } catch(e) { alert('Load error:\n'+e.message); }
 }
 
@@ -2176,7 +2241,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 9;
+const APP_BUILD = 11;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2288,8 +2353,8 @@ async function dbxListFolder(path) {
 async function dbxListProjectFiles(projName) {
   const entries = await dbxListFolder('/projects/'+projName);
   const vFiles = entries
-    .filter(e=>e['.tag']==='file'&&/_v\d+\.json$/.test(e.name))
-    .sort((a,b)=>{ const na=parseInt(a.name.match(/_v(\d+)/)[1]), nb=parseInt(b.name.match(/_v(\d+)/)[1]); return nb-na; })
+    .filter(e=>e['.tag']==='file'&&(/_v\d+\.json$/.test(e.name)||/_v\d+-(real|working)\.json$/.test(e.name)))
+    .sort((a,b)=>{ const ka=verSortKey(a.name),kb=verSortKey(b.name); return kb[0]!==ka[0]?kb[0]-ka[0]:ka[1]-kb[1]; })
     .map(e=>e.name);
   if (vFiles.length) return vFiles;
   return entries
