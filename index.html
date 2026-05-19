@@ -2241,7 +2241,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 13;
+const APP_BUILD = 14;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3312,14 +3312,15 @@ function exportPDF(){
   }
 
   // ── Van/transport header ──────────────────────────────────────────────────
-  function vanHdr(code, name, tot){
+  function vanHdr(code, name, tot, aVal=0){
     chk(8);
     doc.setFillColor(242,242,242); doc.rect(ML,y,CW,7,'F');
     if(code){ doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(255,107,0); doc.text(code, ML+1, y+4.8); }
     doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(20,20,20);
     doc.text(String(name), code?ML+13:ML+3, y+4.8);
-    doc.text(fmtRow(tot), TOT_CZK, y+4.8, {align:'right'});
+    doc.text(tot>0?fmtRow(tot):'—', TOT_CZK, y+4.8, {align:'right'});
     pAlt(tot,y+4.8);
+    pActual(aVal,y+4.8);
     y+=8;
   }
 
@@ -3470,7 +3471,7 @@ function exportPDF(){
     } else if(cat.type==='std'){
       cat.rows.forEach(([,nt,q,r],ri)=>{ const _aVS=actualData[stdKey(cat.code,ri)]||0; if(!q*r && !(showActualPDF&&_aVS>0))return; h+=RH+0.5+(nt?NH:0); });
     } else if(cat.type==='transport'){
-      cat.vans.forEach((van,vi)=>{ const vt=van.subs.reduce((s,[,q,r])=>s+q*r,0); if(!vt)return; h+=8; van.subs.forEach(([,q,r])=>{if(q*r>0)h+=SH;}); });
+      cat.vans.forEach((van,vi)=>{ const vt=van.subs.reduce((s,[,q,r])=>s+q*r,0); const _aVan=actualData[vanKey(cat.code,vi)]||0; if(!vt&&!(showActualPDF&&_aVan>0))return; h+=8; van.subs.forEach(([,q,r])=>{if(q*r>0)h+=SH;}); });
     } else if(cat.type==='talent'){
       cat.sections.forEach((sec,si)=>{
         if(si>0&&sec.name) h+=SBH+1;
@@ -3568,9 +3569,10 @@ function exportPDF(){
       let n=0;
       cat.vans.forEach((van,vi)=>{
         const vt=van.subs.reduce((s,[,q,r])=>s+q*r,0);
-        if(vt===0) return;
+        const _aVan=actualData[vanKey(cat.code,vi)]||0;
+        if(vt===0 && !(showActualPDF&&_aVan>0)) return;
         const _vn=rowNotes[vanKey(cat.code,vi)]||'';
-        vanHdr(cat.code+String(++n).padStart(2,'0'), van.name, vt);
+        vanHdr(cat.code+String(++n).padStart(2,'0'), van.name, vt, _aVan);
         if(_vn) noteRow(_vn);
         van.subs.forEach(([lbl,q,r],si)=>{
           if(q*r===0) return;
