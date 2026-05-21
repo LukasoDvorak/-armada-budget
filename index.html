@@ -412,8 +412,8 @@ body.locked .del-sub { display: none; }
       <div class="fld"><label>Agency Producer</label><input id="h_agprod"></div>
       <div class="fld"><label>Director</label><input id="h_dir"></div>
       <div class="fld"><label>DOP</label><input id="h_dop"></div>
-      <div class="fld"><label>Executive Producer</label><input id="h_ep"></div>
-      <div class="fld"><label>Production Contact</label><input id="h_pc"></div>
+      <div class="fld"><label>Producer</label><input id="h_ep"></div>
+      <div class="fld"><label>Line Producer</label><input id="h_pc"></div>
       <div class="fld"><label>Date</label><input id="h_date"></div>
       <div class="fld"><label>Version</label><input id="h_ver"></div>
       <div class="fld"><label>Shoot Days</label><input id="h_shoot"></div>
@@ -2241,7 +2241,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 16;
+const APP_BUILD = 17;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3359,8 +3359,8 @@ function exportPDF(){
   y=28;
 
   // Info grid (2 columns)
-  const infoL=[['CLIENT',g('h_client')],['AGENCY',g('h_agency')],['DIRECTOR',g('h_dir')],['EXECUTIVE PRODUCER',g('h_ep')]];
-  const infoR=[['PROJECT',g('h_project')],['AGENCY PRODUCER',g('h_agprod')],['DOP',g('h_dop')],['PRODUCTION CONTACT',g('h_pc')]];
+  const infoL=[['CLIENT',g('h_client')],['AGENCY',g('h_agency')],['DIRECTOR',g('h_dir')],['PRODUCER',g('h_ep')]];
+  const infoR=[['PROJECT',g('h_project')],['AGENCY PRODUCER',g('h_agprod')],['DOP',g('h_dop')],['LINE PRODUCER',g('h_pc')]];
   for(let i=0;i<infoL.length;i++){
     const [l1,v1]=infoL[i],[l2,v2]=infoR[i];
     doc.setFont('helvetica','bold'); doc.setFontSize(6); doc.setTextColor(120,120,120);
