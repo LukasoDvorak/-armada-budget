@@ -492,7 +492,6 @@ body.locked .del-sub { display: none; }
       <span>GRAND TOTAL WITHOUT VAT</span>
       <span id="s-grand" style="color:#ff6b00">—</span>
     </div>
-    <div id="sum-alt-rate" style="display:none;margin-top:6px;color:#555;font-size:10px;text-align:right"></div>
     <div id="sum-working-rows"></div>
     <div id="sum-actual-rows"></div>
   </div>
@@ -2242,7 +2241,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 19;
+const APP_BUILD = 21;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3096,18 +3095,14 @@ function goToCat(code){
 function toggleAlt(){ isDirty=true; renderCats(); renderSummary(); }
 function renderSummary(){
   const show=altEnabled();
-  document.getElementById('sum-thead-row').innerHTML=`<th class="thl">Category</th><th>CZK Total</th>${show?`<th class="th-alt">${altName()}</th>`:''}`;
+  const altHdr=show?(()=>{const r=parseFloat(document.getElementById('alt_rate').value)||25;return `<th class="th-alt" style="line-height:1.3;padding-right:14px">${altName()}<br><span style="font-weight:400;font-size:9px;color:#666">1 ${altName()} = ${r.toLocaleString('cs-CZ')} CZK</span></th>`;})():'';
+  document.getElementById('sum-thead-row').innerHTML=`<th class="thl">Category</th><th>CZK Total</th>${altHdr}`;
   let html='';
   cats.forEach((cat,i)=>{
     const tot=catTotal(cat);
     html+=`<tr class="${i%2===0?'even':''}" style="cursor:pointer" title="Double-click to open in Budget" ondblclick="goToCat('${cat.code}')"><td style="padding:4px 7px"><span class="item-code">${cat.code}</span>${cat.label}</td><td class="tdr" style="padding:4px 7px;font-weight:600">${fmt(tot)}</td>${show?`<td class="tdr" style="padding:4px 7px;color:#999;font-size:10px">${fmtAlt(tot)}</td>`:''}</tr>`;
   });
   document.getElementById('sum-tbody').innerHTML=html;
-  const rateEl=document.getElementById('sum-alt-rate');
-  if(rateEl){
-    if(show){const r=parseFloat(document.getElementById('alt_rate').value)||25;rateEl.textContent=`1 ${altName()} = ${r.toLocaleString('cs-CZ')} CZK`;rateEl.style.display='';}
-    else{rateEl.style.display='none';}
-  }
   updateSummaryBar();
 }
 
