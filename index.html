@@ -492,6 +492,7 @@ body.locked .del-sub { display: none; }
       <span>GRAND TOTAL WITHOUT VAT</span>
       <span id="s-grand" style="color:#ff6b00">—</span>
     </div>
+    <div id="sum-alt-rate" style="display:none;margin-top:6px;color:#555;font-size:10px;text-align:right"></div>
     <div id="sum-working-rows"></div>
     <div id="sum-actual-rows"></div>
   </div>
@@ -2241,7 +2242,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 17;
+const APP_BUILD = 19;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2583,7 +2584,9 @@ function updateTalentSub(code,si,ri,k,f,val){
   const cat=cats.find(c=>c.code===code),row=cat.sections[si].rows[ri];
   row.subs[k][f===0?1:2]=parseFloat(val)||0;
   if(f===1||!row.subs[k][3])recalcAgencyFees(row.subs);
-  const el=document.getElementById(`tt-${code}-${si}-${ri}`);if(el)el.textContent=fmt(row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0));
+  const _tst=row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0);
+  const el=document.getElementById(`tt-${code}-${si}-${ri}`);if(el)el.textContent=fmt(_tst);
+  updAlt(crewKey(code,si,ri),_tst);
   row.subs.forEach(([,q,r,isAF],idx)=>{const s=document.getElementById(`tsub-${code}-${si}-${ri}-${idx}`);if(s)s.textContent=(isAF?r:q*r)>0?fmt(isAF?r:q*r):'—';const rl=document.getElementById(`tsub-rate-${code}-${si}-${ri}-${idx}`);if(rl)rl.textContent=r>0?fmt(r):'—';});
   isDirty=true;recalcCat(code);
 }
@@ -3100,6 +3103,11 @@ function renderSummary(){
     html+=`<tr class="${i%2===0?'even':''}" style="cursor:pointer" title="Double-click to open in Budget" ondblclick="goToCat('${cat.code}')"><td style="padding:4px 7px"><span class="item-code">${cat.code}</span>${cat.label}</td><td class="tdr" style="padding:4px 7px;font-weight:600">${fmt(tot)}</td>${show?`<td class="tdr" style="padding:4px 7px;color:#999;font-size:10px">${fmtAlt(tot)}</td>`:''}</tr>`;
   });
   document.getElementById('sum-tbody').innerHTML=html;
+  const rateEl=document.getElementById('sum-alt-rate');
+  if(rateEl){
+    if(show){const r=parseFloat(document.getElementById('alt_rate').value)||25;rateEl.textContent=`1 ${altName()} = ${r.toLocaleString('cs-CZ')} CZK`;rateEl.style.display='';}
+    else{rateEl.style.display='none';}
+  }
   updateSummaryBar();
 }
 
