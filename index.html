@@ -2242,7 +2242,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 28;
+const APP_BUILD = 29;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3452,8 +3452,8 @@ function exportPDF(){
   doc.setFillColor(18,18,18); doc.rect(ML,y,CW,9,'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(255,107,0);
   doc.text('GRAND TOTAL WITHOUT VAT', ML+2, y+6);
-  doc.text(fmt(grand), TOT_CZK, y+6, {align:'right'});
-  if(showAlt){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(220,180,120); doc.text(fmtAltPDF(grand), TOT_ALT, y+6, {align:'right'}); }
+  doc.text(fmtRow(grand), TOT_CZK, y+6, {align:'right'});
+  if(showAlt){ doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(220,185,100); doc.text(fmtAltPDF(grand), TOT_ALT, y+6, {align:'right'}); }
   if(showActualPDF&&actGrand>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(255,107,0); doc.text(fmt(actGrand), ACT_CTR, y+6, {align:'center'}); }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -3684,8 +3684,8 @@ function exportPDF(){
   doc.setFillColor(18,18,18); doc.rect(ML,y,CW,9,'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,107,0);
   doc.text('GRAND TOTAL WITHOUT VAT', ML+2, y+6);
-  doc.text(fmt(grand), TOT_CZK, y+6, {align:'right'});
-  if(showAlt){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(220,180,120); doc.text(fmtAltPDF(grand), TOT_ALT, y+6, {align:'right'}); }
+  doc.text(fmtRow(grand), TOT_CZK, y+6, {align:'right'});
+  if(showAlt){ doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(220,185,100); doc.text(fmtAltPDF(grand), TOT_ALT, y+6, {align:'right'}); }
   if(showActualPDF&&actGrand>0){ doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,107,0); doc.text(fmt(actGrand), ACT_CTR, y+6, {align:'center'}); }
 
   // ── PAGE FOOTERS ──────────────────────────────────────────────────────────
