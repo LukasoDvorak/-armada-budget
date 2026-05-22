@@ -2242,7 +2242,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 24;
+const APP_BUILD = 26;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3177,7 +3177,7 @@ function exportPDF(){
   const fmt    = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ')+' CZK' : '—';
   const fmtN   = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ') : '—';
   // In detail rows, drop ' CZK' from budget total when actual column is present (saves space)
-  const fmtRow = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ')+(showActualPDF?'':' CZK') : '—';
+  const fmtRow = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ')+(showActualPDF||showAlt?'':' CZK') : '—';
   // helper: print alt value in small grey at right margin
   function pAlt(val,yy){
     if(!showAlt||!(val>0))return;
@@ -3357,10 +3357,6 @@ function exportPDF(){
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(130,130,130);
   const verLine=[g('h_date'),g('h_ver')&&('VERSION '+g('h_ver'))].filter(Boolean).join('   ');
   doc.text(verLine, MR, 18, {align:'right'});
-  if(showAlt){
-    doc.setFontSize(6); doc.setTextColor(100,100,100);
-    doc.text('1 '+altCurName+' = '+altCurRate+' CZK', MR, 22.5, {align:'right'});
-  }
   y=28;
 
   // Info grid (2 columns)
@@ -3395,6 +3391,12 @@ function exportPDF(){
     doc.text('NOTES', ML, y); y+=3;
     doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(60,60,60);
     const nl=doc.splitTextToSize(g('h_notes'),CW); doc.text(nl,ML,y); y+=nl.length*4+2;
+  }
+  if(showAlt){
+    doc.setFont('helvetica','bold'); doc.setFontSize(6); doc.setTextColor(120,120,120);
+    doc.text('EXCHANGE RATE', ML, y); y+=3;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(15,15,15);
+    doc.text('1 '+altCurName+' = '+altCurRate+' CZK', ML, y); y+=5;
   }
   y+=4;
   doc.setDrawColor(180,180,180); doc.setLineWidth(0.3); doc.line(ML,y,MR,y); y+=6;
