@@ -2242,7 +2242,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 26;
+const APP_BUILD = 27;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3524,7 +3524,7 @@ function exportPDF(){
             const vt=row.subs.reduce((s,[,q,r])=>s+q*r,0);
             const _aVanC=actualData[crewKey(cat.code,si,ri)]||0;
             if(vt===0 && !(showActualPDF&&_aVanC>0)) return;
-            vanHdr('', row.van, vt, _aVanC);
+            vanHdr(cat.code+String(++n).padStart(2,'0'), row.van, vt, _aVanC);
             if(_rn) noteRow(_rn);
             row.subs.forEach(([lbl,q,r])=>{if(q*r===0)return;vanSub(lbl,q,r);});
           } else if(isOT){
