@@ -2261,7 +2261,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 30;
+const APP_BUILD = 31;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3203,7 +3203,7 @@ function exportPDF(){
   // helper: print alt value in small grey at right margin
   function pAlt(val,yy){
     if(!showAlt||!(val>0))return;
-    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(210,170,80);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(120,120,120);
     doc.text(fmtAltPDF(val),TOT_ALT,yy,{align:'right'});
   }
   // Center of the REAL column (between TOT_CZK and MR)
@@ -3441,8 +3441,8 @@ function exportPDF(){
     doc.text(cat.code, ML+2, y+4.5);
     doc.setTextColor(20,20,20); doc.setFont('helvetica','normal');
     doc.text(cat.label.toUpperCase(), ML+13, y+4.5);
-    doc.setFont('helvetica','bold'); doc.text(fmt(tot), TOT_CZK, y+4.5, {align:'right'});
-    if(showAlt&&tot>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text(fmtAltPDF(tot), TOT_ALT, y+4.5, {align:'right'}); }
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(fmt(tot), TOT_CZK, y+4.5, {align:'right'});
+    if(showAlt&&tot>0){ doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(160,125,50); doc.text(fmtAltPDF(tot), TOT_ALT, y+4.5, {align:'right'}); }
     if(showActualPDF){const _acat=getCatActual(cat);if(_acat!=0){doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_acat).toLocaleString('cs-CZ')+' CZK',ACT_CTR,y+4.5,{align:'center'});}}
     y+=RH; drawSep(); y+=0.5;
   });
@@ -3451,8 +3451,8 @@ function exportPDF(){
     doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,107,0);
     doc.text('OC', ML+2, y+4.5);
     doc.setFont('helvetica','normal'); doc.text('⚠ OVERCOST', ML+13, y+4.5);
-    doc.setFont('helvetica','bold'); doc.text(fmt(ocSubTot), TOT_CZK, y+4.5, {align:'right'});
-    if(showAlt&&ocSubTot!=0){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text(fmtAltPDF(ocSubTot), TOT_ALT, y+4.5, {align:'right'}); }
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(fmt(ocSubTot), TOT_CZK, y+4.5, {align:'right'});
+    if(showAlt&&ocSubTot!=0){ doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(160,125,50); doc.text(fmtAltPDF(ocSubTot), TOT_ALT, y+4.5, {align:'right'}); }
     if(showActualPDF){ const _ocA=overcostRows.reduce((s,r)=>s+(parseFloat(r.actual)||0),0); if(_ocA!=0){ doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(255,107,0);doc.text(Math.round(_ocA).toLocaleString('cs-CZ')+' CZK',ACT_CTR,y+4.5,{align:'center'}); } }
     y+=RH; drawSep(); y+=0.5;
   }
@@ -3463,8 +3463,8 @@ function exportPDF(){
   function drawTotalLine(label, val, actVal, isLast){
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
     doc.text(label, ML, y);
-    doc.setFont('helvetica','bold'); doc.text(fmt(val), TOT_CZK, y, {align:'right'});
-    if(showAlt&&val>0){ doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(130,130,130); doc.text(fmtAltPDF(val), TOT_ALT, y, {align:'right'}); }
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text(fmt(val), TOT_CZK, y, {align:'right'});
+    if(showAlt&&val>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(160,125,50); doc.text(fmtAltPDF(val), TOT_ALT, y, {align:'right'}); }
     if(showActualPDF&&actVal>0){ doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,107,0); doc.text(fmt(actVal), ACT_CTR, y, {align:'center'}); }
     y+=isLast?7:6.5;
   }
