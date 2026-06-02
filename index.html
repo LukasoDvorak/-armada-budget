@@ -26,6 +26,9 @@ body { font-family: 'DM Mono', 'Courier New', monospace; font-size: 12px; color:
 .hdr-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 16px; margin: 12px; }
 .hdr-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px 16px; }
 .fld label { display: block; font-size: 9px; font-weight: 700; color: #888; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+.fld label[contenteditable] { cursor: text; border-bottom: 1px dashed transparent; transition: border-color 0.15s; }
+.fld label[contenteditable]:hover { border-bottom-color: #bbb; }
+.fld label[contenteditable]:focus { outline: none; border-bottom-color: #ff6b00; color: #555; }
 .fld input, .fld textarea { width: 100%; padding: 5px 7px; font-size: 11px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; }
 .fld textarea { resize: vertical; min-height: 60px; }
 .cat-block { border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; margin: 8px 12px; }
@@ -406,18 +409,18 @@ body.locked .del-sub { display: none; }
 <div id="panel-header" class="panel">
   <div class="hdr-box">
     <div class="hdr-grid">
-      <div class="fld"><label>Project</label><input id="h_project"></div>
-      <div class="fld"><label>Client</label><input id="h_client"></div>
-      <div class="fld"><label>Agency</label><input id="h_agency"></div>
-      <div class="fld"><label>Agency Producer</label><input id="h_agprod"></div>
-      <div class="fld"><label>Director</label><input id="h_dir"></div>
-      <div class="fld"><label>DOP</label><input id="h_dop"></div>
-      <div class="fld"><label>Producer</label><input id="h_ep"></div>
-      <div class="fld"><label>Line Producer</label><input id="h_pc"></div>
-      <div class="fld"><label>Date</label><input id="h_date"></div>
-      <div class="fld"><label>Version</label><input id="h_ver"></div>
-      <div class="fld"><label>Shoot Days</label><input id="h_shoot"></div>
-      <div class="fld"><label>Studio Days</label><input id="h_studio"></div>
+      <div class="fld"><label id="lbl_project" contenteditable="true" spellcheck="false" onblur="onLblEdit('project',this)">Project</label><input id="h_project"></div>
+      <div class="fld"><label id="lbl_client" contenteditable="true" spellcheck="false" onblur="onLblEdit('client',this)">Client</label><input id="h_client"></div>
+      <div class="fld"><label id="lbl_agency" contenteditable="true" spellcheck="false" onblur="onLblEdit('agency',this)">Agency</label><input id="h_agency"></div>
+      <div class="fld"><label id="lbl_agprod" contenteditable="true" spellcheck="false" onblur="onLblEdit('agprod',this)">Agency Producer</label><input id="h_agprod"></div>
+      <div class="fld"><label id="lbl_dir" contenteditable="true" spellcheck="false" onblur="onLblEdit('dir',this)">Director</label><input id="h_dir"></div>
+      <div class="fld"><label id="lbl_dop" contenteditable="true" spellcheck="false" onblur="onLblEdit('dop',this)">DOP</label><input id="h_dop"></div>
+      <div class="fld"><label id="lbl_ep" contenteditable="true" spellcheck="false" onblur="onLblEdit('ep',this)">Producer</label><input id="h_ep"></div>
+      <div class="fld"><label id="lbl_pc" contenteditable="true" spellcheck="false" onblur="onLblEdit('pc',this)">Line Producer</label><input id="h_pc"></div>
+      <div class="fld"><label id="lbl_date" contenteditable="true" spellcheck="false" onblur="onLblEdit('date',this)">Date</label><input id="h_date"></div>
+      <div class="fld"><label id="lbl_ver" contenteditable="true" spellcheck="false" onblur="onLblEdit('ver',this)">Version</label><input id="h_ver"></div>
+      <div class="fld"><label id="lbl_shoot" contenteditable="true" spellcheck="false" onblur="onLblEdit('shoot',this)">Shoot Days</label><input id="h_shoot"></div>
+      <div class="fld"><label id="lbl_studio" contenteditable="true" spellcheck="false" onblur="onLblEdit('studio',this)">Studio Days</label><input id="h_studio"></div>
     </div>
     <div style="margin-top:10px">
       <div class="fld"><label>Division</label>
@@ -607,6 +610,22 @@ let isInsFlat   = false;                       // true = fixed insurance amount
 let invoiceChecked = {};                        // keys of rows with invoice received
 let overcostMode = false, overcostRows = [];    // overcost section rows [{name,amount}]
 let rowNotes = {};                              // notes keyed by crewKey/vanKey/stdKey for rows without native note storage
+const DEFAULT_LABELS = {project:'Project',client:'Client',agency:'Agency',agprod:'Agency Producer',dir:'Director',dop:'DOP',ep:'Producer',pc:'Line Producer',date:'Date',ver:'Version',shoot:'Shoot Days',studio:'Studio Days'};
+let customLabels = {};
+function getLbl(k){ return customLabels[k]||DEFAULT_LABELS[k]||k; }
+function onLblEdit(k,el){
+  const v=el.textContent.trim();
+  if(!v){ el.textContent=DEFAULT_LABELS[k]||k; delete customLabels[k]; }
+  else if(v===(DEFAULT_LABELS[k]||k)){ delete customLabels[k]; }
+  else{ customLabels[k]=v; }
+  isDirty=true;
+}
+function applyLabels(){
+  Object.keys(DEFAULT_LABELS).forEach(k=>{
+    const el=document.getElementById('lbl_'+k);
+    if(el) el.textContent=getLbl(k);
+  });
+}
 let _notesSaveTimer = null;
 function getProjectNotes(){ return document.getElementById('notes-area')?.value||''; }
 function setProjectNotes(v){ const el=document.getElementById('notes-area'); if(el) el.value=v||''; }
@@ -2242,7 +2261,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 29;
+const APP_BUILD = 30;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2420,6 +2439,8 @@ function loadHeader(h) {
   set('h_pc',h.productionContact);set('h_date',h.date);set('h_ver',h.version);
   set('h_shoot',h.shootDays);set('h_studio',h.studioDays);
   set('h_deliv',h.deliverables);set('h_buyout',h.buyout);set('h_notes',h.notes);
+  customLabels = h.labels ? {...h.labels} : {};
+  applyLabels();
 }
 function loadSettings(s) {
   if(!s) return;
@@ -2445,7 +2466,8 @@ function loadSettings(s) {
 function gatherHeader() {
   const g=id=>(document.getElementById(id)||{value:''}).value;
   const div=document.getElementById('h_division')?.value||'armada';
-  return {project:g('h_project'),client:g('h_client'),agency:g('h_agency'),division:div,agencyProducer:g('h_agprod'),director:g('h_dir'),dop:g('h_dop'),executiveProducer:g('h_ep'),productionContact:g('h_pc'),date:g('h_date'),version:g('h_ver'),shootDays:g('h_shoot'),studioDays:g('h_studio'),deliverables:g('h_deliv'),buyout:g('h_buyout'),notes:g('h_notes')};
+  const lbls=Object.keys(customLabels).length?{...customLabels}:undefined;
+  return {project:g('h_project'),client:g('h_client'),agency:g('h_agency'),division:div,agencyProducer:g('h_agprod'),director:g('h_dir'),dop:g('h_dop'),executiveProducer:g('h_ep'),productionContact:g('h_pc'),date:g('h_date'),version:g('h_ver'),shootDays:g('h_shoot'),studioDays:g('h_studio'),deliverables:g('h_deliv'),buyout:g('h_buyout'),notes:g('h_notes'),...(lbls?{labels:lbls}:{})};
 }
 function gatherSettings() {
   const g=id=>(document.getElementById(id)||{value:''}).value;
@@ -3177,11 +3199,11 @@ function exportPDF(){
   const fmt    = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ')+' CZK' : '—';
   const fmtN   = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ') : '—';
   // In detail rows, drop ' CZK' from budget total when actual column is present (saves space)
-  const fmtRow = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ')+(showActualPDF||showAlt?'':' CZK') : '—';
+  const fmtRow = n => n!=0 ? Math.round(n).toLocaleString('cs-CZ')+(showActualPDF?'':' CZK') : '—';
   // helper: print alt value in small grey at right margin
   function pAlt(val,yy){
     if(!showAlt||!(val>0))return;
-    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(120,120,120);
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(210,170,80);
     doc.text(fmtAltPDF(val),TOT_ALT,yy,{align:'right'});
   }
   // Center of the REAL column (between TOT_CZK and MR)
@@ -3360,8 +3382,9 @@ function exportPDF(){
   y=28;
 
   // Info grid (2 columns)
-  const infoL=[['CLIENT',g('h_client')],['AGENCY',g('h_agency')],['DIRECTOR',g('h_dir')],['PRODUCER',g('h_ep')]];
-  const infoR=[['PROJECT',g('h_project')],['AGENCY PRODUCER',g('h_agprod')],['DOP',g('h_dop')],['LINE PRODUCER',g('h_pc')]];
+  const _pl=k=>getLbl(k).toUpperCase();
+  const infoL=[[_pl('client'),g('h_client')],[_pl('agency'),g('h_agency')],[_pl('dir'),g('h_dir')],[_pl('ep'),g('h_ep')]];
+  const infoR=[[_pl('project'),g('h_project')],[_pl('agprod'),g('h_agprod')],[_pl('dop'),g('h_dop')],[_pl('pc'),g('h_pc')]];
   for(let i=0;i<infoL.length;i++){
     const [l1,v1]=infoL[i],[l2,v2]=infoR[i];
     doc.setFont('helvetica','bold'); doc.setFontSize(6); doc.setTextColor(120,120,120);
