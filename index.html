@@ -1431,16 +1431,22 @@ function toggleDrop(id) {
   // close all first
   document.querySelectorAll('.btn-drop-menu').forEach(m => m.style.display='none');
   if (!open) {
-    // Use fixed positioning to escape toolbar overflow clipping
+    // Use fixed positioning to escape toolbar overflow clipping.
+    // html { zoom: 1.5 } means getBoundingClientRect() returns physical px on Safari
+    // but position:fixed uses CSS px → divide by htmlZoom (same fix as ctx-menu).
     const btn = document.querySelector('#'+id+' > button');
     const rect = btn.getBoundingClientRect();
+    const hz = parseFloat(window.getComputedStyle(document.documentElement).zoom) || 1;
+    const L = rect.left / hz, B = rect.bottom / hz, R = rect.right / hz;
+    const vpW = window.innerWidth;
     menu.style.position = 'fixed';
-    menu.style.top = (rect.bottom + 3) + 'px';
-    if (id === 'drop-save') {
+    menu.style.top = (B + 3) + 'px';
+    if (id === 'drop-save' || L + 200 > vpW) {
+      // right-align: keep menu inside right edge of viewport
       menu.style.left = 'auto';
-      menu.style.right = (window.innerWidth - rect.right) + 'px';
+      menu.style.right = Math.max(0, vpW - R) + 'px';
     } else {
-      menu.style.left = rect.left + 'px';
+      menu.style.left = L + 'px';
       menu.style.right = 'auto';
     }
     menu.style.display = 'block';
@@ -2261,7 +2267,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 35;
+const APP_BUILD = 37;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3144,7 +3150,7 @@ function setDivision(v){
 function exportPDF(){
   if (!window.jspdf) { alert('PDF library not loaded. Check internet connection.'); return; }
   const {jsPDF} = window.jspdf;
-  const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  const doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4', compress:true});
   const g = id => (document.getElementById(id)||{value:''}).value;
   const _division = document.getElementById('h_division')?.value||'armada';
   const _logoB64 = _division==='armadaplus' ? ARMADA_PLUS_LOGO_B64 : ARMADA_LOGO_B64;
