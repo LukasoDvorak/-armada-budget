@@ -2267,7 +2267,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 37;
+const APP_BUILD = 39;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3773,6 +3773,7 @@ async function exportExcel(){
       if(bd)cell.border=bord(bd);
     }
   };
+  // numCell: val may be a number or {formula,result} object
   const numCell=(row,col,val,bg,f,bd)=>{
     const cell=row.getCell(col);
     cell.value=val; cell.numFmt=NF; cell.alignment={horizontal:'right'};
@@ -3780,131 +3781,126 @@ async function exportExcel(){
     if(f)cell.font=f;
     if(bd)cell.border=bord(bd);
   };
+  // fv: make a formula+result value object (ExcelJS stores cached result)
+  const fv=(formula,result)=>({formula,result});
+  // Exchange-rate cell references (absolute) — set when rate rows are added to each sheet
+  let d2RateRef='$B$4'; // Budget Detail sheet — updated below
+  let s1RateRef='$B$5'; // Summary sheet — updated below
 
-  // ── Sheet 1: Summary ────────────────────────────────────────────
+  // ── Sheet 1: Summary (added first → leftmost tab) ────────────────────────────
   const ws1=wb.addWorksheet('Summary');
   const NC1=showAltE?4:3;
   ws1.columns=[{width:8},{width:40},{width:18},{width:16}];
-  // Title
-  let r=ws1.addRow(['FILM PRODUCTION BUDGET — SUMMARY']);
-  ws1.mergeCells(r.number,1,r.number,NC1);
-  sRow(r,1,NC1,CL.DARK,fnt(true,CL.OR,13)); r.height=22;
-  r.getCell(1).alignment={vertical:'middle',horizontal:'left'};
-  // Info rows
-  [['Client',g('h_client'),'Director',g('h_dir')],
-   ['Agency',g('h_agency'),'DOP',g('h_dop')],
-   ['Date',g('h_date'),'Version',g('h_ver')]].forEach(([l1,v1,l2,v2])=>{
-    r=ws1.addRow([l1,v1,l2,v2]);
-    sRow(r,1,NC1,CL.DARK,fnt(false,CL.SECT,8)); r.height=14;
-    r.getCell(1).font=fnt(true,CL.OR,8);
-    r.getCell(3).font=fnt(true,CL.OR,8);
-  });
-  r=ws1.addRow([]); sRow(r,1,NC1,CL.DARK);
-  // Column headers
-  const s1h=showAltE?['Code','Category','Total CZK','Total '+altNE]:['Code','Category','Total CZK'];
-  r=ws1.addRow(s1h);
-  sRow(r,1,NC1,CL.OR,fnt(true,CL.W,9),CL.OR); r.height=16;
-  for(let c=1;c<=NC1;c++)r.getCell(c).alignment={horizontal:c===2?'left':'center',vertical:'middle'};
-  // Category rows
-  let alt1=false;
-  cats.forEach(cat=>{
-    const t=catTotal(cat);
-    const bg=alt1?CL.WH:CL.AR; alt1=!alt1;
-    r=ws1.addRow([cat.code,cat.label]);
-    r.getCell(3).value=t; r.getCell(3).numFmt=NF; r.getCell(3).alignment={horizontal:'right'};
-    if(showAltE){r.getCell(4).value=toAlt(t);r.getCell(4).numFmt=NF;r.getCell(4).alignment={horizontal:'right'};}
-    sRow(r,1,NC1,bg,fnt(false,'FF1A1A1A',9),CL.BC); r.height=14;
-    r.getCell(1).font=fnt(true,CL.OR,9);
-    r.getCell(1).alignment={horizontal:'center'};
-    if(showAltE)r.getCell(4).font=fnt(false,'FF666666',8);
-  });
-  ws1.addRow([]);
-  // Totals
-  const addS1Tot=(label,val,bold)=>{
-    const bg=bold?CL.DARK:CL.TB;
-    r=ws1.addRow(['',label]);
-    numCell(r,3,val,bg,fnt(bold,bold?CL.OR:'FF1A1A1A',bold?10:9),CL.BC);
-    if(showAltE)numCell(r,4,toAlt(val),bg,fnt(false,bold?CL.SECT:'FF777777',8),CL.BC);
-    sRow(r,1,2,bg,fnt(bold,bold?CL.W:'FF1A1A1A',bold?10:9),CL.BC);
-    r.getCell(2).alignment={horizontal:'left'}; r.height=bold?18:14;
-  };
-  addS1Tot('Sub-Total Direct Costs',sub,false);
-  if(ocE>0) addS1Tot('⚠ Overcost',ocE,false);
-  addS1Tot('Production Fee ('+feePct+'%)',fee,false);
-  addS1Tot('Insurance ('+insPct+'%)',ins,false);
-  addS1Tot('GRAND TOTAL WITHOUT VAT',grand,true);
 
   // ── Sheet 2: Budget Detail ─────────────────────────────────────
+  // Build Detail first so row numbers are available for Summary cross-refs
   const ws2=wb.addWorksheet('Budget Detail');
   const NC2=showAltE?9:8;
   ws2.columns=[{width:8},{width:44},{width:22},{width:14},{width:16},{width:12},{width:14},{width:18},{width:16}];
-  ws2.views=[{state:'frozen',ySplit:5}];
+  let r2;
   // Title
-  r=ws2.addRow(['FILM PRODUCTION BUDGET — DETAIL']);
-  ws2.mergeCells(r.number,1,r.number,NC2);
-  sRow(r,1,NC2,CL.DARK,fnt(true,CL.OR,13)); r.height=22;
-  r.getCell(1).alignment={vertical:'middle',horizontal:'left'};
+  r2=ws2.addRow(['FILM PRODUCTION BUDGET — DETAIL']);
+  ws2.mergeCells(r2.number,1,r2.number,NC2);
+  sRow(r2,1,NC2,CL.DARK,fnt(true,CL.OR,13)); r2.height=22;
+  r2.getCell(1).alignment={vertical:'middle',horizontal:'left'};
   // Info rows
   [['Client',g('h_client'),'Agency',g('h_agency')],
    ['Version',g('h_ver'),'Date',g('h_date')]].forEach(([l1,v1,l2,v2])=>{
-    r=ws2.addRow([l1,v1,'',l2,v2]);
-    sRow(r,1,NC2,CL.DARK,fnt(false,CL.SECT,8)); r.height=14;
-    r.getCell(1).font=fnt(true,CL.OR,8);
-    r.getCell(4).font=fnt(true,CL.OR,8);
+    r2=ws2.addRow([l1,v1,'',l2,v2]);
+    sRow(r2,1,NC2,CL.DARK,fnt(false,CL.SECT,8)); r2.height=14;
+    r2.getCell(1).font=fnt(true,CL.OR,8);
+    r2.getCell(4).font=fnt(true,CL.OR,8);
   });
-  r=ws2.addRow([]); sRow(r,1,NC2,CL.DARK);
+  // Exchange rate row (only when foreign currency is enabled)
+  if(showAltE){
+    r2=ws2.addRow(['1 '+altNE+' =',altRE,'CZK','','','','','','']);
+    d2RateRef='$B$'+r2.number;
+    sRow(r2,1,NC2,CL.DARK,fnt(false,CL.SECT,8));
+    r2.getCell(1).font=fnt(false,CL.OR,8);
+    r2.getCell(2).font=fnt(true,CL.W,9);
+    r2.getCell(2).numFmt='#,##0.##';
+    r2.getCell(2).alignment={horizontal:'right'};
+    r2.getCell(3).font=fnt(false,CL.SECT,8);
+    r2.height=14;
+  }
+  ws2.views=[{state:'frozen',ySplit:showAltE?6:5}];
+  r2=ws2.addRow([]); sRow(r2,1,NC2,CL.DARK);
   // Column headers
   const s2h=['Code','Description','Note','Qty / Prep d','Rate / Prep rate','Shoot d','Shoot rate','Total CZK'];
   if(showAltE)s2h.push('Total '+altNE);
-  r=ws2.addRow(s2h);
-  sRow(r,1,NC2,CL.OR,fnt(true,CL.W,9),CL.OR); r.height=16;
-  for(let c=1;c<=NC2;c++)r.getCell(c).alignment={horizontal:c<=3?'left':'center',vertical:'middle'};
+  r2=ws2.addRow(s2h);
+  sRow(r2,1,NC2,CL.OR,fnt(true,CL.W,9),CL.OR); r2.height=16;
+  for(let c=1;c<=NC2;c++)r2.getCell(c).alignment={horizontal:c<=3?'left':'center',vertical:'middle'};
 
-  let rowAlt=false, ctr=0;
+  let rowAlt=false;
+  // addDRow: infers formula from column types, returns row number
   const addDRow=(code,desc,note,c1,c2,c3,c4,tot,isSub,bgOver,bold)=>{
     const bgc=bgOver!=null?bgOver:(isSub?CL.VB:(rowAlt?CL.WH:CL.AR));
     if(!isSub&&bgOver==null)rowAlt=!rowAlt;
     const f=isSub?fnt(false,'FF555555',8):fnt(!!bold,'FF1A1A1A',9);
-    r=ws2.addRow([code,desc,note||'',c1||'',c2||'',c3||'',c4||'',tot||'']);
-    if(showAltE)r.getCell(9).value=(typeof tot==='number'&&tot>0)?toAlt(tot):'';
-    sRow(r,1,NC2,bgc,f,CL.BC);
-    if(code&&!isSub)r.getCell(1).font=fnt(true,CL.OR,9);
-    if(typeof tot==='number')numCell(r,8,tot,bgc,bold?fnt(true,'FF1A1A1A',9):f,CL.BC);
-    if(showAltE&&typeof tot==='number'&&tot>0)numCell(r,9,toAlt(tot),bgc,fnt(false,'FF777777',8),CL.BC);
-    if(typeof c1==='number'){r.getCell(4).numFmt=NF;r.getCell(4).alignment={horizontal:'right'};}
-    if(typeof c2==='number'){r.getCell(5).numFmt=NF;r.getCell(5).alignment={horizontal:'right'};}
-    if(typeof c3==='number'){r.getCell(6).numFmt=NF;r.getCell(6).alignment={horizontal:'right'};}
-    if(typeof c4==='number'){r.getCell(7).numFmt=NF;r.getCell(7).alignment={horizontal:'right'};}
-    r.getCell(1).alignment={horizontal:'center'}; r.height=14;
+    r2=ws2.addRow([code,desc,note||'',c1||'',c2||'',c3||'',c4||'','']);
+    const rn=r2.number;
+    sRow(r2,1,NC2,bgc,f,CL.BC);
+    if(code&&!isSub)r2.getCell(1).font=fnt(true,CL.OR,9);
+    // Infer formula: check which columns have numeric values
+    const h1=typeof c1==='number',h2=typeof c2==='number',h3=typeof c3==='number',h4=typeof c4==='number';
+    let fml=null;
+    if(h1&&h2&&h3&&h4)     fml='D'+rn+'*E'+rn+'+F'+rn+'*G'+rn;  // crew: prep*rate + shoot*rate
+    else if(h1&&h2&&h3)    fml='D'+rn+'*E'+rn+'*F'+rn;           // OT: qty*mult*rate
+    else if(h1&&h2)         fml='D'+rn+'*E'+rn;                   // simple qty*rate
+    // Total CZK
+    if(typeof tot==='number'){
+      numCell(r2,8,fml?fv(fml,tot):tot,bgc,bold?fnt(true,'FF1A1A1A',9):f,CL.BC);
+    }
+    // Total EUR (formula references own H cell)
+    if(showAltE&&typeof tot==='number'){
+      const av=tot>0?(fml?fv('ROUND(H'+rn+'/'+d2RateRef+',0)',toAlt(tot)):toAlt(tot)):'';
+      if(tot>0)numCell(r2,9,av,bgc,fnt(false,'FF777777',8),CL.BC);
+    }
+    if(h1){r2.getCell(4).numFmt=NF;r2.getCell(4).alignment={horizontal:'right'};}
+    if(h2){r2.getCell(5).numFmt=NF;r2.getCell(5).alignment={horizontal:'right'};}
+    if(h3){r2.getCell(6).numFmt=NF;r2.getCell(6).alignment={horizontal:'right'};}
+    if(h4){r2.getCell(7).numFmt=NF;r2.getCell(7).alignment={horizontal:'right'};}
+    r2.getCell(1).alignment={horizontal:'center'}; r2.height=14;
+    return rn;
   };
-  const addCatHdr=(code,label,tot)=>{
-    rowAlt=false;
-    r=ws2.addRow([code,label.toUpperCase(),'','','','','',tot]);
-    if(showAltE)r.getCell(9).value=toAlt(tot);
-    sRow(r,1,NC2,CL.DARK,fnt(true,CL.W,10),CL.DARK); r.height=18;
-    r.getCell(1).font=fnt(true,CL.OR,10);
-    numCell(r,8,tot,CL.DARK,fnt(true,CL.OR,10),CL.DARK);
-    if(showAltE)numCell(r,9,toAlt(tot),CL.DARK,fnt(false,CL.SECT,8),CL.DARK);
-    r.getCell(1).alignment={horizontal:'center'};
+  // Set SUM formula on a group-parent row (van / talent-with-subs)
+  const setGroupSum=(parentRn,firstSub,lastSub,tot)=>{
+    const hdr=ws2.getRow(parentRn);
+    hdr.getCell(8).value=fv('SUM(H'+firstSub+':H'+lastSub+')',tot); hdr.getCell(8).numFmt=NF;
+    if(showAltE&&tot>0){hdr.getCell(9).value=fv('ROUND(H'+parentRn+'/'+d2RateRef+',0)',toAlt(tot));hdr.getCell(9).numFmt=NF;}
   };
   const addSecHdr=name=>{
-    r=ws2.addRow(['','── '+name.toUpperCase()]);
-    ws2.mergeCells(r.number,2,r.number,NC2);
-    sRow(r,1,NC2,CL.SEC,fnt(false,CL.SECT,9)); r.height=13;
+    r2=ws2.addRow(['','── '+name.toUpperCase()]);
+    ws2.mergeCells(r2.number,2,r2.number,NC2);
+    sRow(r2,1,NC2,CL.SEC,fnt(false,CL.SECT,9)); r2.height=13;
   };
-  const addTotRow=(code,tot)=>{
-    r=ws2.addRow(['','TOTAL '+code,'','','','','',tot]);
-    if(showAltE)r.getCell(9).value=toAlt(tot);
-    sRow(r,1,NC2,CL.TB,fnt(true,'FF1A1A1A',9),CL.BC); r.height=15;
-    numCell(r,8,tot,CL.TB,fnt(true,'FF1A1A1A',9),CL.BC);
-    if(showAltE)numCell(r,9,toAlt(tot),CL.TB,fnt(false,'FF777777',8),CL.BC);
+  // addTotRow: sumFormula = e.g. 'H6+H8+H10'. Returns row number.
+  const addTotRow=(code,tot,sumFormula)=>{
+    r2=ws2.addRow(['','TOTAL '+code,'','','','','','']);
+    const rn=r2.number;
+    sRow(r2,1,NC2,CL.TB,fnt(true,'FF1A1A1A',9),CL.BC); r2.height=15;
+    numCell(r2,8,sumFormula?fv(sumFormula,tot):tot,CL.TB,fnt(true,'FF1A1A1A',9),CL.BC);
+    if(showAltE)numCell(r2,9,fv('ROUND(H'+rn+'/'+d2RateRef+',0)',toAlt(tot)),CL.TB,fnt(false,'FF777777',8),CL.BC);
     ws2.addRow([]);
+    return rn;
   };
+
+  const catTotRowNums={}; // cat.code → TOTAL row number in ws2
 
   cats.forEach(cat=>{
     const tot=catTotal(cat);
-    addCatHdr(cat.code,cat.label,tot);
+    rowAlt=false;
+    // Cat header (no value yet; updated after TOTAL row is known)
+    r2=ws2.addRow([cat.code,cat.label.toUpperCase(),'','','','','','']);
+    const catHdrRow=r2;
+    sRow(r2,1,NC2,CL.DARK,fnt(true,CL.W,10),CL.DARK); r2.height=18;
+    r2.getCell(1).font=fnt(true,CL.OR,10);
+    r2.getCell(1).alignment={horizontal:'center'};
+
+    const catParentRows=[]; // parent-row numbers (no sub-rows) for TOTAL formula
     let n=0;
+
     if(cat.type==='crew'){
       cat.sections.forEach((sec,si)=>{
         const isOT=sec.name==='Overtimes';
@@ -3912,65 +3908,171 @@ async function exportExcel(){
         sec.rows.forEach(row=>{
           if(row.van){
             const vt=row.subs.reduce((s,[,q,rr])=>s+q*rr,0);
-            addDRow('',row.van,'','','','','',vt,false,CL.VB,false);
+            const vanRn=addDRow('',row.van,'','','','','',vt,false,CL.VB,false);
+            catParentRows.push(vanRn);
+            const vanFirst=ws2.rowCount+1;
             row.subs.forEach(([lbl,q,rr])=>addDRow('','  '+lbl,'',q,rr,'','',q*rr,true));
+            setGroupSum(vanRn,vanFirst,ws2.rowCount,vt);
           } else if(isOT&&row.length===4){
-            addDRow('',row[0],'',row[1]+'x'+row[2],row[3],'','',row[1]*row[2]*row[3]);
+            // OT triple: col D is string "qty×mult", no formula possible
+            catParentRows.push(addDRow('',row[0],'',row[1]+'x'+row[2],row[3],'','',row[1]*row[2]*row[3]));
           } else if(isOT&&row.length===3){
-            addDRow('',row[0],'',row[1],row[2],'','',row[1]*row[2]);
+            catParentRows.push(addDRow('',row[0],'',row[1],row[2],'','',row[1]*row[2]));
           } else if(row.length===6){
-            addDRow(cat.code+String(++n).padStart(2,'0'),row[0],row[1],row[2],row[3],row[4],row[5],row[2]*row[3]+row[4]*row[5]);
+            catParentRows.push(addDRow(cat.code+String(++n).padStart(2,'0'),row[0],row[1],row[2],row[3],row[4],row[5],row[2]*row[3]+row[4]*row[5]));
           } else if(row.length===4&&typeof row[1]==='number'){
-            addDRow('',row[0],'',row[1],row[2],row[3],'',row[1]*row[2]*row[3]);
+            catParentRows.push(addDRow('',row[0],'',row[1],row[2],row[3],'',row[1]*row[2]*row[3]));
           } else if(row.length===4){
-            addDRow(cat.code+String(++n).padStart(2,'0'),row[0],row[1],row[2],row[3],'','',row[2]*row[3]);
+            catParentRows.push(addDRow(cat.code+String(++n).padStart(2,'0'),row[0],row[1],row[2],row[3],'','',row[2]*row[3]));
           }
         });
       });
     } else if(cat.type==='std'){
       cat.rows.forEach(([desc,note,qty,rate],ri)=>{
-        addDRow(cat.code+String(ri+1).padStart(2,'0'),desc,note,qty,rate,'','',qty*rate);
+        catParentRows.push(addDRow(cat.code+String(ri+1).padStart(2,'0'),desc,note,qty,rate,'','',qty*rate));
       });
     } else if(cat.type==='transport'){
       let tn=0;
       cat.vans.forEach(van=>{
         const vt=van.subs.reduce((s,[,q,rr])=>s+q*rr,0);
-        addDRow(cat.code+String(++tn).padStart(2,'0'),van.name,'','','','','',vt,false,CL.VB,false);
+        const vanRn=addDRow(cat.code+String(++tn).padStart(2,'0'),van.name,'','','','','',vt,false,CL.VB,false);
+        catParentRows.push(vanRn);
+        const vanFirst=ws2.rowCount+1;
         van.subs.forEach(([lbl,q,rr])=>addDRow('','  '+lbl,'',q,rr,'','',q*rr,true));
+        setGroupSum(vanRn,vanFirst,ws2.rowCount,vt);
       });
     } else if(cat.type==='talent'){
       cat.sections.forEach((sec,si)=>{
         if(sec.name)addSecHdr(sec.name);
         sec.rows.forEach(row=>{
           const code=cat.code+String(++n).padStart(2,'0');
-          if(row.qty!==undefined)addDRow(code,row.name,row.note||'',row.qty,row.rate,'','',row.qty*row.rate);
-          else if(row.amount!==undefined)addDRow(code,row.name,'','','','','',row.amount);
-          else if(row.subs){
-            const tt=row.subs.reduce((s,[,q,r,isAF])=>s+(isAF?r:q*r),0);
-            addDRow(code,row.name,'','','','','',tt,false,CL.VB,false);
-            row.subs.forEach(([lbl,q,r,isAF])=>addDRow('','  '+lbl,'',q,r,'','',isAF?r:q*r,true));
+          if(row.qty!==undefined){
+            catParentRows.push(addDRow(code,row.name,row.note||'',row.qty,row.rate,'','',row.qty*row.rate));
+          } else if(row.amount!==undefined){
+            catParentRows.push(addDRow(code,row.name,'','','','','',row.amount));
+          } else if(row.subs){
+            const tt=row.subs.reduce((s,[,q,r3,isAF])=>s+(isAF?r3:q*r3),0);
+            const talRn=addDRow(code,row.name,'','','','','',tt,false,CL.VB,false);
+            catParentRows.push(talRn);
+            const talFirst=ws2.rowCount+1;
+            // isAF rows: pass '' for qty so no formula is inferred (flat amounts)
+            row.subs.forEach(([lbl,q,r3,isAF])=>addDRow('','  '+lbl,'',isAF?'':q,r3,'','',isAF?r3:q*r3,true));
+            setGroupSum(talRn,talFirst,ws2.rowCount,tt);
           }
         });
       });
     }
-    addTotRow(cat.code,tot);
+
+    // TOTAL row: sum of parent-row H cells (avoids double-counting sub-rows)
+    const sumFml=catParentRows.length?catParentRows.map(n=>'H'+n).join('+'):null;
+    const totRn=addTotRow(cat.code,tot,sumFml);
+    catTotRowNums[cat.code]=totRn;
+
+    // Now update cat header to reference the TOTAL row
+    numCell(catHdrRow,8,fv('H'+totRn,tot),CL.DARK,fnt(true,CL.OR,10),CL.DARK);
+    catHdrRow.getCell(8).alignment={horizontal:'right'};
+    if(showAltE){
+      numCell(catHdrRow,9,fv('I'+totRn,toAlt(tot)),CL.DARK,fnt(false,CL.SECT,8),CL.DARK);
+      catHdrRow.getCell(9).alignment={horizontal:'right'};
+    }
   });
 
-  // Grand total rows
+  // ── Grand Total rows (Budget Detail) ──────────────────────────
   ws2.addRow([]);
-  const addGrandRow=(label,val,bold)=>{
+  const addGrandRow=(label,val,bold,fml)=>{
     const bg=bold?CL.DARK:CL.TB;
-    r=ws2.addRow(['',label,'','','','','',val]);
-    if(showAltE)r.getCell(9).value=toAlt(val);
-    sRow(r,1,NC2,bg,fnt(bold,bold?CL.W:'FF1A1A1A',bold?10:9),CL.BC);
-    numCell(r,8,val,bg,fnt(bold,bold?CL.OR:'FF1A1A1A',bold?10:9),CL.BC);
-    if(showAltE)numCell(r,9,toAlt(val),bg,fnt(false,bold?CL.SECT:'FF777777',8),CL.BC);
-    r.getCell(2).alignment={horizontal:'left'}; r.height=bold?20:14;
+    r2=ws2.addRow(['',label,'','','','','','']);
+    const rn=r2.number;
+    sRow(r2,1,NC2,bg,fnt(bold,bold?CL.W:'FF1A1A1A',bold?10:9),CL.BC);
+    numCell(r2,8,fml?fv(fml,val):val,bg,fnt(bold,bold?CL.OR:'FF1A1A1A',bold?10:9),CL.BC);
+    if(showAltE)numCell(r2,9,fv('ROUND(H'+rn+'/'+d2RateRef+',0)',toAlt(val)),bg,fnt(false,bold?CL.SECT:'FF777777',8),CL.BC);
+    r2.getCell(2).alignment={horizontal:'left'}; r2.height=bold?20:14;
+    return rn;
   };
-  addGrandRow('Sub-Total Direct Costs',sub,false);
-  addGrandRow('Production Fee ('+feePct+'%)',fee,false);
-  addGrandRow('Insurance ('+insPct+'%)',ins,false);
-  addGrandRow('GRAND TOTAL WITHOUT VAT',grand,true);
+  const d2SubFml=cats.map(c=>'H'+catTotRowNums[c.code]).join('+');
+  const d2SubRn=addGrandRow('Sub-Total Direct Costs',sub,false,d2SubFml);
+  let d2OcRn=null;
+  if(ocE>0)d2OcRn=addGrandRow('⚠ Overcost',ocE,false,null);
+  // Fee: use formula only when % and no exclusions; otherwise hardcode
+  const canFeeFormula=!isFlatFee&&!Object.keys(feeExclusions||{}).length;
+  const d2FeeFml=canFeeFormula?'ROUND(H'+d2SubRn+'*'+feePct+'/100,0)':null;
+  const d2FeeRn=addGrandRow('Production Fee ('+feePct+'%)',fee,false,d2FeeFml);
+  const d2InsFml=!isInsFlat?'ROUND(H'+d2SubRn+'*'+insPct+'/100,0)':null;
+  const d2InsRn=addGrandRow('Insurance ('+insPct+'%)',ins,false,d2InsFml);
+  const d2GrandFml='H'+d2SubRn+(d2OcRn?'+H'+d2OcRn:'')+'+H'+d2FeeRn+'+H'+d2InsRn;
+  addGrandRow('GRAND TOTAL WITHOUT VAT',grand,true,d2GrandFml);
+
+  // ── Now build Summary (ws1) using cross-refs to Budget Detail ────
+  let r1;
+  // Title
+  r1=ws1.addRow(['FILM PRODUCTION BUDGET — SUMMARY']);
+  ws1.mergeCells(r1.number,1,r1.number,NC1);
+  sRow(r1,1,NC1,CL.DARK,fnt(true,CL.OR,13)); r1.height=22;
+  r1.getCell(1).alignment={vertical:'middle',horizontal:'left'};
+  // Info rows
+  [['Client',g('h_client'),'Director',g('h_dir')],
+   ['Agency',g('h_agency'),'DOP',g('h_dop')],
+   ['Date',g('h_date'),'Version',g('h_ver')]].forEach(([l1,v1,l2,v2])=>{
+    r1=ws1.addRow([l1,v1,l2,v2]);
+    sRow(r1,1,NC1,CL.DARK,fnt(false,CL.SECT,8)); r1.height=14;
+    r1.getCell(1).font=fnt(true,CL.OR,8);
+    r1.getCell(3).font=fnt(true,CL.OR,8);
+  });
+  // Exchange rate row (Summary)
+  if(showAltE){
+    r1=ws1.addRow(['1 '+altNE+' =',altRE,'CZK','']);
+    s1RateRef='$B$'+r1.number;
+    sRow(r1,1,NC1,CL.DARK,fnt(false,CL.SECT,8));
+    r1.getCell(1).font=fnt(false,CL.OR,8);
+    r1.getCell(2).font=fnt(true,CL.W,9);
+    r1.getCell(2).numFmt='#,##0.##';
+    r1.getCell(2).alignment={horizontal:'right'};
+    r1.getCell(3).font=fnt(false,CL.SECT,8);
+    r1.height=14;
+  }
+  r1=ws1.addRow([]); sRow(r1,1,NC1,CL.DARK);
+  // Column headers
+  const s1h=showAltE?['Code','Category','Total CZK','Total '+altNE]:['Code','Category','Total CZK'];
+  r1=ws1.addRow(s1h);
+  sRow(r1,1,NC1,CL.OR,fnt(true,CL.W,9),CL.OR); r1.height=16;
+  for(let c=1;c<=NC1;c++)r1.getCell(c).alignment={horizontal:c===2?'left':'center',vertical:'middle'};
+  // Category rows — cross-ref to Budget Detail TOTAL rows
+  let alt1=false;
+  const s1CatRows=[];
+  cats.forEach(cat=>{
+    const t=catTotal(cat);
+    const bg=alt1?CL.WH:CL.AR; alt1=!alt1;
+    r1=ws1.addRow([cat.code,cat.label]);
+    const s1Rn=r1.number;
+    s1CatRows.push(s1Rn);
+    numCell(r1,3,fv("'Budget Detail'!H"+catTotRowNums[cat.code],t),bg,fnt(false,'FF1A1A1A',9),CL.BC);
+    if(showAltE)numCell(r1,4,fv("'Budget Detail'!I"+catTotRowNums[cat.code],toAlt(t)),bg,fnt(false,'FF666666',8),CL.BC);
+    sRow(r1,1,2,bg,fnt(false,'FF1A1A1A',9),CL.BC); r1.height=14;
+    r1.getCell(1).font=fnt(true,CL.OR,9);
+    r1.getCell(1).alignment={horizontal:'center'};
+  });
+  ws1.addRow([]);
+  // Totals on Summary
+  const addS1Tot=(label,val,bold,fml)=>{
+    const bg=bold?CL.DARK:CL.TB;
+    r1=ws1.addRow(['',label]);
+    const rn=r1.number;
+    numCell(r1,3,fml?fv(fml,val):val,bg,fnt(bold,bold?CL.OR:'FF1A1A1A',bold?10:9),CL.BC);
+    if(showAltE)numCell(r1,4,fv('ROUND(C'+rn+'/'+s1RateRef+',0)',toAlt(val)),bg,fnt(false,bold?CL.SECT:'FF777777',8),CL.BC);
+    sRow(r1,1,2,bg,fnt(bold,bold?CL.W:'FF1A1A1A',bold?10:9),CL.BC);
+    r1.getCell(2).alignment={horizontal:'left'}; r1.height=bold?18:14;
+    return rn;
+  };
+  const s1SubFml=s1CatRows.map(n=>'C'+n).join('+');
+  const s1SubRn=addS1Tot('Sub-Total Direct Costs',sub,false,s1SubFml);
+  let s1OcRn=null;
+  if(ocE>0)s1OcRn=addS1Tot('⚠ Overcost',ocE,false,null);
+  const s1FeeFml=canFeeFormula?'ROUND(C'+s1SubRn+'*'+feePct+'/100,0)':null;
+  const s1FeeRn=addS1Tot('Production Fee ('+feePct+'%)',fee,false,s1FeeFml);
+  const s1InsFml=!isInsFlat?'ROUND(C'+s1SubRn+'*'+insPct+'/100,0)':null;
+  const s1InsRn=addS1Tot('Insurance ('+insPct+'%)',ins,false,s1InsFml);
+  const s1GrandFml='C'+s1SubRn+(s1OcRn?'+C'+s1OcRn:'')+'+C'+s1FeeRn+'+C'+s1InsRn;
+  addS1Tot('GRAND TOTAL WITHOUT VAT',grand,true,s1GrandFml);
 
   // Write and download
   const buf=await wb.xlsx.writeBuffer();
