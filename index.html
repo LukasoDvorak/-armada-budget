@@ -2267,7 +2267,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 41;
+const APP_BUILD = 43;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -2518,10 +2518,13 @@ function makeEditable(text, onSave, isNum=false) {
 }
 function startInlineEdit(el, isNum, cur, onSave) {
   if(el.querySelector('input')) return;
-  el.innerHTML=`<input type="${isNum?'number':'text'}" class="${isNum?'cell-num':'cell-text'}" value="${cur}" style="width:${isNum?'70px':'140px'}">`;
+  // Read current value from DOM (not render-time 'cur') so second edit shows saved text
+  const curVal=isNum?(parseFloat(el.textContent)||0):el.textContent.trim();
+  const safeVal=String(curVal).replace(/"/g,'&quot;');
+  el.innerHTML=`<input type="${isNum?'number':'text'}" class="${isNum?'cell-num':'cell-text'}" value="${safeVal}" style="width:${isNum?'70px':'140px'}">`;
   const inp=el.querySelector('input'); inp.focus(); inp.select();
   const save=()=>{const v=isNum?(parseFloat(inp.value)||0):inp.value;el.innerHTML=String(v);onSave(v);};
-  inp.onblur=save; inp.onkeydown=e=>{if(e.key==='Enter'){e.stopPropagation();inp.blur();}if(e.key==='Escape'){e.stopPropagation();e.preventDefault();inp.onblur=null;el.innerHTML=cur;}};
+  inp.onblur=save; inp.onkeydown=e=>{if(e.key==='Enter'){e.stopPropagation();inp.blur();}if(e.key==='Escape'){e.stopPropagation();e.preventDefault();inp.onblur=null;el.innerHTML=String(curVal);}};
 }
 
 // Drag & drop
@@ -3833,8 +3836,9 @@ async function exportExcel(){
   for(let c=1;c<=NC2;c++)r2.getCell(c).alignment={horizontal:c<=3?'left':'center',vertical:'middle'};
 
   let rowAlt=false;
-  // addDRow: infers formula from column types, returns row number
-  const addDRow=(code,desc,note,c1,c2,c3,c4,tot,isSub,bgOver,bold)=>{
+  // addDRow: infers formula from column types, returns row number.
+  // fmlFn (optional): function(rowNum)=>formulaString — overrides inferred formula
+  const addDRow=(code,desc,note,c1,c2,c3,c4,tot,isSub,bgOver,bold,fmlFn=null)=>{
     const bgc=bgOver!=null?bgOver:(isSub?CL.VB:(rowAlt?CL.WH:CL.AR));
     if(!isSub&&bgOver==null)rowAlt=!rowAlt;
     const f=isSub?fnt(false,'FF555555',8):fnt(!!bold,'FF1A1A1A',9);
@@ -3843,12 +3847,14 @@ async function exportExcel(){
     const rn=r2.number;
     sRow(r2,1,NC2,bgc,f,CL.BC);
     if(code&&!isSub)r2.getCell(1).font=fnt(true,CL.OR,9);
-    // Infer formula: check which columns have numeric values
+    // Formula: use override if provided, otherwise infer from column types
     const h1=typeof c1==='number',h2=typeof c2==='number',h3=typeof c3==='number',h4=typeof c4==='number';
-    let fml=null;
-    if(h1&&h2&&h3&&h4)     fml='D'+rn+'*E'+rn+'+F'+rn+'*G'+rn;  // crew: prep*rate + shoot*rate
-    else if(h1&&h2&&h3)    fml='D'+rn+'*E'+rn+'*F'+rn;           // OT: qty*mult*rate
-    else if(h1&&h2)         fml='D'+rn+'*E'+rn;                   // simple qty*rate
+    let fml=fmlFn?fmlFn(rn):null;
+    if(!fml){
+      if(h1&&h2&&h3&&h4)   fml='D'+rn+'*E'+rn+'+F'+rn+'*G'+rn;  // crew: prep*rate + shoot*rate
+      else if(h1&&h2&&h3)  fml='D'+rn+'*E'+rn+'*F'+rn;           // OT: qty*mult*rate
+      else if(h1&&h2)       fml='D'+rn+'*E'+rn;                   // simple qty*rate
+    }
     // Total CZK
     if(typeof tot==='number'){
       numCell(r2,8,fml?fv(fml,tot):tot,bgc,bold?fnt(true,'FF1A1A1A',9):f,CL.BC);
@@ -3952,12 +3958,12 @@ async function exportExcel(){
           } else if(row.amount!==undefined){
             catParentRows.push(addDRow(code,row.name,'','','','','',row.amount));
           } else if(row.subs){
-            const tt=row.subs.reduce((s,[,q,r3,isAF])=>s+(isAF?r3:q*r3),0);
+            const tt=row.subs.reduce((s,[,q,r3,isAF])=>s+(isAF?r3*0.2:q*r3),0);
             const talRn=addDRow(code,row.name,'','','','','',tt,false,CL.VB,false);
             catParentRows.push(talRn);
             const talFirst=ws2.rowCount+1;
-            // isAF rows: pass '' for qty so no formula is inferred (flat amounts)
-            row.subs.forEach(([lbl,q,r3,isAF])=>addDRow('','  '+lbl,'',isAF?'':q,r3,'','',isAF?r3:q*r3,true));
+            // isAF rows: col E holds base amount, formula =E*0.2 computes the 20% agency fee
+            row.subs.forEach(([lbl,q,r3,isAF])=>addDRow('','  '+lbl,'',isAF?'':q,r3,'','',isAF?r3*0.2:q*r3,true,null,false,isAF?(rn=>'E'+rn+'*0.2'):null));
             setGroupSum(talRn,talFirst,ws2.rowCount,tt);
           }
         });
