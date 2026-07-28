@@ -2267,7 +2267,7 @@ function openFinder() { /* not applicable in web version */ }
 // ── DROPBOX API ───────────────────────────────────────────────────────────────
 // ── BUILD — bump this before every push ─────────────────────────────────────
 const APP_VERSION = 29;
-const APP_BUILD = 43;
+const APP_BUILD = 44;
 (()=>{ const el=document.getElementById('build-label'); if(el) el.textContent='b'+APP_BUILD; const vl=document.getElementById('version-label'); if(vl) vl.textContent='v'+APP_VERSION; })();
 
 const DBX_APP_KEY = '4jx8y4fof0awdgc';
@@ -3958,12 +3958,13 @@ async function exportExcel(){
           } else if(row.amount!==undefined){
             catParentRows.push(addDRow(code,row.name,'','','','','',row.amount));
           } else if(row.subs){
-            const tt=row.subs.reduce((s,[,q,r3,isAF])=>s+(isAF?r3*0.2:q*r3),0);
+            const tt=row.subs.reduce((s,[,q,r3,isAF])=>s+(isAF?r3:q*r3),0);
             const talRn=addDRow(code,row.name,'','','','','',tt,false,CL.VB,false);
             catParentRows.push(talRn);
             const talFirst=ws2.rowCount+1;
-            // isAF rows: col E holds base amount, formula =E*0.2 computes the 20% agency fee
-            row.subs.forEach(([lbl,q,r3,isAF])=>addDRow('','  '+lbl,'',isAF?'':q,r3,'','',isAF?r3*0.2:q*r3,true,null,false,isAF?(rn=>'E'+rn+'*0.2'):null));
+            // isAF: r3 is already the 20% fee (pre-computed). Put base in col E so =E*0.2 shows the calc.
+            const afBase=row.subs.reduce((s,[,q,r3,isAF])=>s+(isAF?0:q*r3),0);
+            row.subs.forEach(([lbl,q,r3,isAF])=>addDRow('','  '+lbl,'',isAF?'':q,isAF?afBase:r3,'','',isAF?r3:q*r3,true,null,false,isAF?(rn=>'E'+rn+'*0.2'):null));
             setGroupSum(talRn,talFirst,ws2.rowCount,tt);
           }
         });
